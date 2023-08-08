@@ -56,20 +56,22 @@ def get_data_groups(inputFile: str) -> dict[str, pd.DataFrame]:
 
     return output_dfs
 
-def plot_df(df: pd.DataFrame):
-    with PdfPages("myImagePDF.pdf") as pdf:
-        for cat in df:
-            if cat.startswith("Q") and cat[1].isdigit() and "TEXT" not in cat and "Check all that apply" not in cat:
-                name = cat.split(":")[0]
-                print(name)
-                try:
-                    plt.figure(figsize=(20, 6))
-                    df[cat].value_counts().rename(name).to_frame().transpose().plot.barh(stacked=True, title=cat.split("-")[1] if "-" in cat else cat)
-                    pdf.savefig()
-                except TypeError:
-                    pass
-                finally:
-                    plt.close()
+def get_bar_cats(df: pd.DataFrame) -> list[tuple[str, str]]:
+    return [
+        (cat.split(":")[0], cat) for cat in df if cat.startswith("Q") and cat[1].isdigit() and "TEXT" not in cat and "Check all that apply" not in cat
+    ]
+
+def plot_df(df: pd.DataFrame, cats: list[tuple[str, str]], name: str):
+    with PdfPages(f"out/{name}.pdf") as pdf:
+        for (name, cat) in bar_cats:
+            try:
+                fig = plt.figure(figsize=(20, 6))
+                df[cat].value_counts().rename(name).to_frame().transpose().plot.barh(stacked=True, title=cat)
+                pdf.savefig()
+            except TypeError:
+                pass
+            finally:
+                plt.close('all')
     
     # plt.savefig("myImagePDF.pdf", format="pdf", bbox_inches="tight")
 
@@ -77,7 +79,8 @@ if __name__ == '__main__':
     start = time.time()
     dfs_to_process = get_data_groups("./data/sample_data.txt")
     print(time.time() - start)
+    bar_cats = get_bar_cats(dfs_to_process['All'])
     for k, v in dfs_to_process.items():
         print(k)
-        plot_df(v)
-        break
+        plot_df(v, bar_cats, k)
+        print(time.time() - start)
