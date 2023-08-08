@@ -1,5 +1,6 @@
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 import pandas as pd
 import time
 
@@ -56,9 +57,21 @@ def get_data_groups(inputFile: str) -> dict[str, pd.DataFrame]:
     return output_dfs
 
 def plot_df(df: pd.DataFrame):
-    print(df['Q7:Please rate your level of agreement with the following statements about your experience with Scripps Research in the last 12 months. - Scripps Research creates an environment where I feel welcome.'].value_counts().rename("Q7").to_frame().transpose())
-    df['Q7:Please rate your level of agreement with the following statements about your experience with Scripps Research in the last 12 months. - Scripps Research creates an environment where I feel welcome.'].value_counts().rename("Q7").to_frame().transpose().plot.barh(stacked=True, title="Q7:Please rate your level of agreement with the following statements about your experience with Scripps Research in the last 12 months. - Scripps Research creates an environment where I feel welcome.")
-    plt.savefig("myImagePDF.pdf", format="pdf", bbox_inches="tight")
+    with PdfPages("myImagePDF.pdf") as pdf:
+        for cat in df:
+            if cat.startswith("Q") and cat[1].isdigit() and "TEXT" not in cat and "Check all that apply" not in cat:
+                name = cat.split(":")[0]
+                print(name)
+                try:
+                    plt.figure(figsize=(20, 6))
+                    df[cat].value_counts().rename(name).to_frame().transpose().plot.barh(stacked=True, title=cat.split("-")[1] if "-" in cat else cat)
+                    pdf.savefig()
+                except TypeError:
+                    pass
+                finally:
+                    plt.close()
+    
+    # plt.savefig("myImagePDF.pdf", format="pdf", bbox_inches="tight")
 
 if __name__ == '__main__':
     start = time.time()
