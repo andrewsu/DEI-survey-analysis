@@ -65,8 +65,8 @@ def plot_df(df: pd.DataFrame, cats: list[tuple[str, str]], name: str):
     with PdfPages(f"out/{name}.pdf") as pdf:
         for (name, cat) in bar_cats:
             try:
-                fig = plt.figure(figsize=(20, 6))
-                df[cat].value_counts().rename(name).to_frame().transpose().plot.barh(stacked=True, title=cat)
+                df[cat].value_counts().rename(name).to_frame().transpose().plot.barh(stacked=True, figsize=(8.5, 6))
+                plt.title(cat, wrap=True)
                 pdf.savefig()
             except TypeError:
                 pass
