@@ -72,18 +72,19 @@ def plot_df(df: pd.DataFrame, cats: list[tuple[str, str]], name: str):
             if not "Check all that apply" in cat:
                 a = df[cat].value_counts().rename(cat_name).to_frame().transpose()
                 a.plot.barh(stacked=True, ax=axes[i])
+                total = df[cat].dropna().shape[0]
             else:
                 values_df = df[cat].apply(lambda x: x.split(',') if not pd.isna(x) else ["No Answer"])
                 values = np.unique(values_df.sum())
                 a = pd.DataFrame({val:np.sum([val in x for x in values_df]) for val in values}, index=[cat_name])
                 a.plot.barh(ax=axes[i])
+                total = df[cat].shape[0]
 
-            
 
             # cut off lables on the legend
             max_legend_label_length = 30
             handles, labels = axes[i].get_legend_handles_labels()
-            shortened_labels = [label[:max_legend_label_length] + '...' if len(label) > max_legend_label_length else label for label in labels]
+            shortened_labels = [(label[:max_legend_label_length] + '...' if len(label) > max_legend_label_length else label) + ' ({:.1%})'.format(a[label][cat_name]/total) for label in labels]
             axes[i].legend(handles, shortened_labels)
             axes[i].set_title("\n".join(wrap(cat, 60)), wrap=True)
 
