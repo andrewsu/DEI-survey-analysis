@@ -78,12 +78,12 @@ def plot_df(df: pd.DataFrame, cats: list[tuple[str, str]], name: str):
 
                 print(cat)
                 if not "Check all that apply" in cat:
-                    a = df[cat].value_counts().rename(cat_name).to_frame().transpose()
+                    a = df[cat].value_counts().sort_index().rename(cat_name).to_frame().transpose()
                     a.plot.barh(stacked=True, ax=axes[i])
                     total = df[cat].dropna().shape[0]
                 else:
                     values_df = df[cat].apply(lambda x: x.split(',') if not pd.isna(x) else ["No Answer"])
-                    values = np.unique(values_df.sum())
+                    values = np.unique(values_df.sum()).sort()
                     a = pd.DataFrame({val:np.sum([val in x for x in values_df]) for val in values}, index=[cat_name])
                     a.plot.barh(ax=axes[i])
                     total = df[cat].shape[0]
@@ -108,6 +108,10 @@ def plot_df(df: pd.DataFrame, cats: list[tuple[str, str]], name: str):
             except TypeError as e:
                 print(e)
                 pass
+        
+        if i % 3 != 0:
+            pdf.savefig()
+    
 
     #plt.savefig(f"out/{name}.pdf", format="pdf", bbox_inches="tight")
 
