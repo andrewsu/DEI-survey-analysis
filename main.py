@@ -63,37 +63,53 @@ def get_bar_cats(df: pd.DataFrame) -> list[tuple[str, str]]:
     ]
 
 def plot_df(df: pd.DataFrame, cats: list[tuple[str, str]], name: str):
-    fig, axes = plt.subplots(len(cats), 1, figsize=(8.5, 6 * len(cats)))
-    plt.subplots_adjust(hspace=0.4)
-    i = 0
-    for (cat_name, cat) in cats:
-        try:
-            print(cat)
-            if not "Check all that apply" in cat:
-                a = df[cat].value_counts().rename(cat_name).to_frame().transpose()
-                a.plot.barh(stacked=True, ax=axes[i])
-                total = df[cat].dropna().shape[0]
-            else:
-                values_df = df[cat].apply(lambda x: x.split(',') if not pd.isna(x) else ["No Answer"])
-                values = np.unique(values_df.sum())
-                a = pd.DataFrame({val:np.sum([val in x for x in values_df]) for val in values}, index=[cat_name])
-                a.plot.barh(ax=axes[i])
-                total = df[cat].shape[0]
+    with PdfPages(f"out/{name}.pdf") as pdf:
+        i = 0
 
+        # first page
+        fig, axes = plt.subplots(3, 1, figsize=(8.5, 11))
+        plt.subplots_adjust(hspace=2.5)
 
-            # cut off lables on the legend
-            max_legend_label_length = 30
-            handles, labels = axes[i].get_legend_handles_labels()
-            shortened_labels = [(label[:max_legend_label_length] + '...' if len(label) > max_legend_label_length else label) + ' ({:.1%})'.format(a[label][cat_name]/total) for label in labels]
-            axes[i].legend(handles, shortened_labels)
-            axes[i].set_title("\n".join(wrap(cat, 60)), wrap=True)
+        for (cat_name, cat) in cats:
+            try:
+                ## exclude Q31 (more of a freetext)
+                if cat_name == "Q31":
+                    continue
 
-            i += 1
-        except TypeError as e:
-            print(e)
-            pass
+                print(cat)
+                if not "Check all that apply" in cat:
+                    a = df[cat].value_counts().rename(cat_name).to_frame().transpose()
+                    a.plot.barh(stacked=True, ax=axes[i])
+                    total = df[cat].dropna().shape[0]
+                else:
+                    values_df = df[cat].apply(lambda x: x.split(',') if not pd.isna(x) else ["No Answer"])
+                    values = np.unique(values_df.sum())
+                    a = pd.DataFrame({val:np.sum([val in x for x in values_df]) for val in values}, index=[cat_name])
+                    a.plot.barh(ax=axes[i])
+                    total = df[cat].shape[0]
 
-    plt.savefig(f"out/{name}.pdf", format="pdf", bbox_inches="tight")
+                # cut off lables on the legend
+                max_legend_label_length = 30
+                handles, labels = axes[i].get_legend_handles_labels()
+                shortened_labels = [(label[:max_legend_label_length] + '...' if len(label) > max_legend_label_length else label) + ' ({:.1%})'.format(a[label][cat_name]/total) for label in labels]
+
+                axes[i].legend(handles, shortened_labels, bbox_to_anchor=(1.0, -0.25), ncol=2)
+                axes[i].set_title("\n".join(wrap(cat, 60)), wrap=True)
+
+                i += 1
+
+                # subsequent pages
+                if i % 3 == 0:
+                    pdf.savefig()
+                    fig, axes = plt.subplots(3, 1, figsize=(8.5, 11))
+                    plt.subplots_adjust(hspace=2.5)
+                    i = 0
+
+            except TypeError as e:
+                print(e)
+                pass
+
+    #plt.savefig(f"out/{name}.pdf", format="pdf", bbox_inches="tight")
 
 if __name__ == '__main__':
     start = time.time()
