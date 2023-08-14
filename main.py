@@ -4,6 +4,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 import pandas as pd
 import time
 from textwrap import wrap
+import traceback
 
 def get_data_groups(inputFile: str) -> dict[str, pd.DataFrame]:
     output_dfs = {}
@@ -68,7 +69,6 @@ def plot_df(df: pd.DataFrame, cats: list[tuple[str, str]], name: str):
 
         # first page
         fig, axes = plt.subplots(3, 1, figsize=(8.5, 11))
-        plt.subplots_adjust(hspace=2.5)
 
         for (cat_name, cat) in cats:
             try:
@@ -83,7 +83,8 @@ def plot_df(df: pd.DataFrame, cats: list[tuple[str, str]], name: str):
                     total = df[cat].dropna().shape[0]
                 else:
                     values_df = df[cat].apply(lambda x: x.split(',') if not pd.isna(x) else ["No Answer"])
-                    values = np.unique(values_df.sum()).sort()
+                    values = np.unique(values_df.sum())
+                    values.sort()
                     a = pd.DataFrame({val:np.sum([val in x for x in values_df]) for val in values}, index=[cat_name])
                     a.plot.barh(ax=axes[i])
                     total = df[cat].shape[0]
@@ -91,7 +92,7 @@ def plot_df(df: pd.DataFrame, cats: list[tuple[str, str]], name: str):
                 # cut off lables on the legend
                 max_legend_label_length = 30
                 handles, labels = axes[i].get_legend_handles_labels()
-                shortened_labels = [(label[:max_legend_label_length] + '...' if len(label) > max_legend_label_length else label) + ' ({:.1%})'.format(a[label][cat_name]/total) for label in labels]
+                shortened_labels = [(label[:max_legend_label_length] + '...' if len(label) > max_legend_label_length else label) + ' ({:} / {:.1%})'.format(a[label][cat_name], a[label][cat_name]/total) for label in labels]
 
                 axes[i].legend(handles, shortened_labels, bbox_to_anchor=(1.0, -0.25), ncol=2)
                 axes[i].set_title("\n".join(wrap(cat, 60)), wrap=True)
@@ -100,14 +101,14 @@ def plot_df(df: pd.DataFrame, cats: list[tuple[str, str]], name: str):
 
                 # subsequent pages
                 if i % 3 == 0:
+                    fig.tight_layout()
                     pdf.savefig()
                     fig, axes = plt.subplots(3, 1, figsize=(8.5, 11))
-                    plt.subplots_adjust(hspace=2.5)
                     i = 0
 
             except TypeError as e:
+                print(traceback.format_exc())
                 print(e)
-                pass
         
         if i % 3 != 0:
             pdf.savefig()
@@ -124,3 +125,4 @@ if __name__ == '__main__':
         print(k)
         plot_df(v, bar_cats, k)
         print(time.time() - start)
+        break
