@@ -5,6 +5,20 @@ import pandas as pd
 import time
 from textwrap import wrap
 import traceback
+from itertools import chain
+
+def adjust_df(df: pd.DataFrame):
+    val_orders = [
+        ['Strongly agree', 'Somewhat agree', 'Neither agree nor disagree', 'Somewhat disagree', 'Strongly Disagree'],
+        ['Very likely', 'Likely', 'Somewhat likely', 'Somewhat unlikely', 'Unlikely', 'Very unlikely'],
+        ['Very satisfied', 'Satisfied', 'Neutral', 'Neither dissatisfied nor satisfied', 'Dissatisfied', 'Very dissatisfied', 'Does not apply to me'],
+        ['Extremely confident', 'Very confident', 'Moderately confident', 'Slightly confident', 'Not at all confident']
+    ]
+
+    original_vals = list(chain.from_iterable(val_orders))
+    new_vals = list(chain.from_iterable([[f"{val}/{val_orders[order][val]}" for val in range(len(val_orders[order]))] for order in range(len(val_orders))]))
+
+    df.replace(original_vals, new_vals, inplace=True)
 
 def get_data_groups(inputFile: str) -> dict[str, pd.DataFrame]:
     output_dfs = {}
@@ -13,6 +27,9 @@ def get_data_groups(inputFile: str) -> dict[str, pd.DataFrame]:
 
     # Drop rows with all empty cells
     input_df.dropna(axis=0, how='all', inplace=True)
+
+    # Replacement (useful for sorting)
+    adjust_df(input_df)
 
     # create base
     if input_df.shape[0] < 5:
@@ -144,4 +161,3 @@ if __name__ == '__main__':
         print(name)
         plot_df(df, bar_cats, text_cats, name)
         print(time.time() - start)
-        break
