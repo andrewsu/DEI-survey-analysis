@@ -63,14 +63,20 @@ def get_bar_cats(df: pd.DataFrame) -> list[tuple[str, str]]:
         (cat.split(":")[0], cat) for cat in df if cat.startswith("Q") and cat[1].isdigit() and "TEXT" not in cat
     ]
 
-def plot_df(df: pd.DataFrame, cats: list[tuple[str, str]], name: str):
+def get_text_cats(df: pd.DataFrame) -> list[str]:
+    return [
+        cat for cat in df if "TEXT" in cat or "Q31" in cat
+    ]
+
+def plot_df(df: pd.DataFrame, bar_cats: list[tuple[str, str]], text_cats: list[str], name: str):
     with PdfPages(f"out/{name}.pdf") as pdf:
         i = 0
 
+        # BAR CHARTS
         # first page
         fig, axes = plt.subplots(3, 1, figsize=(8.5, 11))
 
-        for (cat_name, cat) in cats:
+        for (cat_name, cat) in bar_cats:
             try:
                 ## exclude Q31 (more of a freetext)
                 if cat_name == "Q31":
@@ -112,17 +118,30 @@ def plot_df(df: pd.DataFrame, cats: list[tuple[str, str]], name: str):
         
         if i % 3 != 0:
             pdf.savefig()
-    
 
-    #plt.savefig(f"out/{name}.pdf", format="pdf", bbox_inches="tight")
+        # TEXT RESPONSES
+        for cat in text_cats:
+            fig, axes = plt.subplots(1, 1, figsize=(8.5, 11))
+            axes.axis('off')
+            values_df = df[cat].value_counts().to_frame().transpose()
+            if values_df.empty:
+                continue
+
+            axes.set_title(cat, wrap=True)
+            axes.text(0, 0, "\n\n".join(["\n".join(wrap(i, 60))[:180] + ("..." if len(i) > 180 else "") + f" ({values_df[i][cat]})" for i in values_df][:10]) + ("\n\n..." if values_df.shape[1] > 10 else ""), fontsize=8)
+
+            pdf.savefig()
+
+
 
 if __name__ == '__main__':
     start = time.time()
     dfs_to_process = get_data_groups("./data/sample_data.txt")
     print(time.time() - start)
     bar_cats = get_bar_cats(dfs_to_process['All'])
-    for k, v in dfs_to_process.items():
-        print(k)
-        plot_df(v, bar_cats, k)
+    text_cats = get_text_cats(dfs_to_process['All'])
+    for name, df in dfs_to_process.items():
+        print(name)
+        plot_df(df, bar_cats, text_cats, name)
         print(time.time() - start)
         break
