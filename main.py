@@ -9,7 +9,7 @@ from itertools import chain
 
 def adjust_df(df: pd.DataFrame):
     val_orders = [
-        ['Strongly agree', 'Somewhat agree', 'Neither agree nor disagree', 'Somewhat disagree', 'Strongly Disagree'],
+        ['Strongly agree', 'Somewhat agree', 'Neither agree nor disagree', 'Somewhat disagree', 'Strongly disagree'],
         ['Very likely', 'Likely', 'Somewhat likely', 'Somewhat unlikely', 'Unlikely', 'Very unlikely'],
         ['Very satisfied', 'Satisfied', 'Neutral', 'Neither dissatisfied nor satisfied', 'Dissatisfied', 'Very dissatisfied', 'Does not apply to me'],
         ['Extremely confident', 'Very confident', 'Moderately confident', 'Slightly confident', 'Not at all confident']
