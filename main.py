@@ -27,6 +27,9 @@ def adjust_df(df: pd.DataFrame):
     df.replace([r'^(\d\d\d)'], [r'B/\1'], inplace=True, regex=True)
     df.replace([r'^(\d\d)'], [r'A/\1'], inplace=True, regex=True)
 
+    # we don't want to count this as a choice
+    df.replace([r'(?i).*prefer not to say.*'], [np.NaN], inplace=True, regex=True)
+
 def get_data_groups(inputFile: str) -> dict[str, pd.DataFrame]:
     output_dfs = {}
 
@@ -169,4 +172,3 @@ if __name__ == '__main__':
         print(name)
         plot_df(df, bar_cats, text_cats, name)
         print(time.time() - start)
-        break
