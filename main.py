@@ -135,6 +135,7 @@ def plot_df(df: pd.DataFrame, bar_cats: list[tuple[str, str]], text_cats: list[s
                 print(e)
         
         if i % 3 != 0:
+            fig.tight_layout()
             pdf.savefig()
 
         # TEXT RESPONSES
