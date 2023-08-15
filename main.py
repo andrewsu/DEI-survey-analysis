@@ -9,16 +9,16 @@ from itertools import chain
 
 def adjust_df(df: pd.DataFrame):
     val_orders = [
-        ['Strongly agree', 'Somewhat agree', 'Neither agree nor disagree', 'Somewhat disagree', 'Strongly disagree'],
-        ['Very likely', 'Likely', 'Somewhat likely', 'Somewhat unlikely', 'Unlikely', 'Very unlikely'],
-        ['Very satisfied', 'Satisfied', 'Neutral', 'Neither dissatisfied nor satisfied', 'Dissatisfied', 'Very dissatisfied', 'Does not apply to me'],
-        ['Extremely confident', 'Very confident', 'Moderately confident', 'Slightly confident', 'Not at all confident']
+        [r'(?i)^(Strongly agree)', r'(?i)^((?:Somewhat )*agree)', r'(?i)^(Neither agree nor disagree)', r'(?i)^((?:Somewhat )*disagree)', r'(?i)^(Strongly disagree)'],
+        [r'(?i)^(Very likely)', r'(?i)^(Likely)', r'(?i)^(Somewhat likely)',r'(?i)^(Somewhat unlikely)', r'(?i)^(Unlikely)', r'(?i)^(Very unlikely)'],
+        [r'(?i)^(Very satisfied)', r'(?i)^(Satisfied)', r'(?i)^(Neutral)', r'(?i)^(Neither dissatisfied nor satisfied)', r'(?i)^(Dissatisfied)', r'(?i)^(Very dissatisfied)', r'(?i)^(Does not apply to me)'],
+        [r'(?i)^(Extremely confident)', r'(?i)^(Very confident)', r'(?i)^(Moderately confident)',r'(?i)^(Slightly confident)', r'(?i)^(ot at all confident)']
     ]
 
     original_vals = list(chain.from_iterable(val_orders))
-    new_vals = list(chain.from_iterable([[f"{val}/{val_orders[order][val]}" for val in range(len(val_orders[order]))] for order in range(len(val_orders))]))
+    new_vals = list(chain.from_iterable([[f"{val}/\\1" for val in range(len(order))] for order in val_orders]))
 
-    df.replace(original_vals, new_vals, inplace=True)
+    df.replace(original_vals, new_vals, inplace=True, regex=True)
 
 def get_data_groups(inputFile: str) -> dict[str, pd.DataFrame]:
     output_dfs = {}
@@ -118,7 +118,7 @@ def plot_df(df: pd.DataFrame, bar_cats: list[tuple[str, str]], text_cats: list[s
                 shortened_labels = [(label[:max_legend_label_length] + '...' if len(label) > max_legend_label_length else label) + ' ({:} / {:.1%})'.format(a[label][cat_name], a[label][cat_name]/total) for label in labels]
 
                 axes[i].legend(handles, shortened_labels, bbox_to_anchor=(1.0, -0.25), ncol=2)
-                axes[i].set_title("\n".join(wrap(cat, 60)), wrap=True)
+                axes[i].set_title("\n".join(wrap(cat + f" [Responses: {total}]", 60)), wrap=True)
 
                 i += 1
 
@@ -161,3 +161,4 @@ if __name__ == '__main__':
         print(name)
         plot_df(df, bar_cats, text_cats, name)
         print(time.time() - start)
+        break
