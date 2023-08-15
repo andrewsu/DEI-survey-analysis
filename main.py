@@ -12,7 +12,8 @@ def adjust_df(df: pd.DataFrame):
         [r'(?i)^(Strongly agree)', r'(?i)^((?:Somewhat )*agree)', r'(?i)^(Neither agree nor disagree)', r'(?i)^((?:Somewhat )*disagree)', r'(?i)^(Strongly disagree)'],
         [r'(?i)^(Very likely)', r'(?i)^(Likely)', r'(?i)^(Somewhat likely)',r'(?i)^(Somewhat unlikely)', r'(?i)^(Unlikely)', r'(?i)^(Very unlikely)'],
         [r'(?i)^(Very satisfied)', r'(?i)^(Satisfied)', r'(?i)^(Neutral)', r'(?i)^(Neither dissatisfied nor satisfied)', r'(?i)^(Dissatisfied)', r'(?i)^(Very dissatisfied)', r'(?i)^(Does not apply to me)'],
-        [r'(?i)^(Extremely confident)', r'(?i)^(Very confident)', r'(?i)^(Moderately confident)',r'(?i)^(Slightly confident)', r'(?i)^(ot at all confident)']
+        [r'(?i)^(Extremely confident)', r'(?i)^(Very confident)', r'(?i)^(Moderately confident)',r'(?i)^(Slightly confident)', r'(?i)^(ot at all confident)'],
+        [r'(?i)^(Extremely important)', r'(?i)^(Somewhat important)', r'(?i)^(Moderately important)', r'(?i)^(A little important)', r'(?i)^(Not at all important)']
     ]
 
     original_vals = list(chain.from_iterable(val_orders))
