@@ -21,6 +21,10 @@ def adjust_df(df: pd.DataFrame):
 
     df.replace(original_vals, new_vals, inplace=True, regex=True)
 
+    # special case for numeric ordering
+    df.replace([r'^(\d\d\d)'], [r'B/\1'], inplace=True, regex=True)
+    df.replace([r'^(\d\d)'], [r'A/\1'], inplace=True, regex=True)
+
 def get_data_groups(inputFile: str) -> dict[str, pd.DataFrame]:
     output_dfs = {}
 
