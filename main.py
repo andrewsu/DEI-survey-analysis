@@ -9,17 +9,22 @@ from itertools import chain
 
 # replaces some terms to ensure they are alphabetically ordered for bar chart generation
 def order_values(df: pd.DataFrame):
+    # special case for numeric ordering (put 2/3 digit numbers after 1 digit numbers)
+    df.replace([r'^(\d\d\d)'], [r'B/\1'], inplace=True, regex=True)
+    df.replace([r'^(\d\d)'], [r'A/\1'], inplace=True, regex=True)
 
     # specifies how groups of values should be ordered in bar graphs
     val_orders = [
         [r'(?i)^(Strongly agree)', r'(?i)^((?:Somewhat )*agree)', r'(?i)^(Neither agree nor disagree)', r'(?i)^((?:Somewhat )*disagree)', r'(?i)^(Strongly disagree)'],
         [r'(?i)^(Very likely)', r'(?i)^(Likely)', r'(?i)^(Somewhat likely)',r'(?i)^(Somewhat unlikely)', r'(?i)^(Unlikely)', r'(?i)^(Very unlikely)'],
-        [r'(?i)^(Very satisfied)', r'(?i)^(Satisfied)', r'(?i)^(Neutral)', r'(?i)^(Neither dissatisfied nor satisfied)', r'(?i)^(Dissatisfied)', r'(?i)^(Very dissatisfied)', r'(?i)^(Does not apply to me)'],
-        [r'(?i)^(Extremely confident)', r'(?i)^(Very confident)', r'(?i)^(Moderately confident)',r'(?i)^(Slightly confident)', r'(?i)^(ot at all confident)'],
+        [r'(?i)^(Very satisfied)', r'(?i)^(Satisfied)', r'(?i)^(Neutral|Neither dissatisfied nor satisfied)', r'(?i)^(Dissatisfied)', r'(?i)^(Very dissatisfied)', r'(?i)^(Does not apply to me)'],
+        [r'(?i)^(Extremely confident)', r'(?i)^(Very confident)', r'(?i)^(Moderately confident)',r'(?i)^(Slightly confident)', r'(?i)^(Not at all confident)'],
         [r'(?i)^(Extremely important)', r'(?i)^(Somewhat important)', r'(?i)^(Moderately important)', r'(?i)^(A little important)', r'(?i)^(Not at all important)'],
         [r'(?i)^(Very prepared)', r'(?i)^(Somewhat prepared)', r'(?i)^(Moderately prepared)', r'(?i)^(Slightly prepared)'],
         [r'(?i)^(Yes, I have all the.*)', r'(?i)^(Somewhat)\s*$', r'(?i)^(Moderately)\s*$', r'(?i)^(A little)\s*$', r'(?i)^(Not at all)\s*$']
     ]
+
+    print([len(v) for v in val_orders])
 
     original_vals = list(chain.from_iterable(val_orders))
 
@@ -27,10 +32,6 @@ def order_values(df: pd.DataFrame):
     new_vals = list(chain.from_iterable([[f"{index}/\\1" for index in range(len(ordered_group))] for ordered_group in val_orders]))
 
     df.replace(original_vals, new_vals, inplace=True, regex=True)
-
-    # special case for numeric ordering (put 2/3 digit numbers after 1 digit numbers)
-    df.replace([r'^(\d\d\d)'], [r'B/\1'], inplace=True, regex=True)
-    df.replace([r'^(\d\d)'], [r'A/\1'], inplace=True, regex=True)
 
     # prefer not to say answers should be treated as no answer (NaN)
     df.replace([r'(?i).*prefer not to say.*'], [np.NaN], inplace=True, regex=True)
