@@ -7,7 +7,8 @@ from textwrap import wrap
 import traceback
 from itertools import chain
 
-def adjust_df(df: pd.DataFrame):
+# replaces some terms to ensure they are alphabetically ordered for bar chart generation
+def order_values(df: pd.DataFrame):
     val_orders = [
         [r'(?i)^(Strongly agree)', r'(?i)^((?:Somewhat )*agree)', r'(?i)^(Neither agree nor disagree)', r'(?i)^((?:Somewhat )*disagree)', r'(?i)^(Strongly disagree)'],
         [r'(?i)^(Very likely)', r'(?i)^(Likely)', r'(?i)^(Somewhat likely)',r'(?i)^(Somewhat unlikely)', r'(?i)^(Unlikely)', r'(?i)^(Very unlikely)'],
@@ -30,16 +31,21 @@ def adjust_df(df: pd.DataFrame):
     # we don't want to count this as a choice
     df.replace([r'(?i).*prefer not to say.*'], [np.NaN], inplace=True, regex=True)
 
+# returns a dict of dataframes for which a report should be produced, indexed by the name of that group of data
 def get_data_groups(inputFile: str) -> dict[str, pd.DataFrame]:
     output_dfs = {}
 
-    input_df = pd.read_csv(inputFile, encoding='cp1252', sep='\t', header=0)
+    if inputFile.endswith(".xlsx"):
+        input_df = pd.read_excel(inputFile)
+    else:
+        # gets the first sheet by default
+        input_df = pd.read_csv(inputFile, encoding='cp1252', sep='\t', header=0)
 
     # Drop rows with all empty cells
     input_df.dropna(axis=0, how='all', inplace=True)
 
     # Replacement (useful for sorting)
-    adjust_df(input_df)
+    order_values(input_df)
 
     # create base
     if input_df.shape[0] < 5:
@@ -55,8 +61,9 @@ def get_data_groups(inputFile: str) -> dict[str, pd.DataFrame]:
     for base_category in base_categories:
         unique_base_entries = dict(tuple(input_df.groupby(base_category)))
 
+        # loops through values for this base category
         for base_entry, base_entry_df in unique_base_entries.items():
-
+            # checks if size is too small for anonymity
             if base_entry_df.shape[0] < 5:
                 continue
 
@@ -67,13 +74,16 @@ def get_data_groups(inputFile: str) -> dict[str, pd.DataFrame]:
                 if specific_category == 'Q3:Ethnicity/Race (Check all that apply) - Selected Choice':
                     values = np.unique(base_entry_df[specific_category].apply(lambda x: x.split(',')).sum())
                     unique_specific_entries = {val:base_entry_df.loc[base_entry_df[specific_category].str.contains(val)] for val in values}
+                # not multi select
                 else:
                     unique_specific_entries = dict(tuple(base_entry_df.groupby(specific_category)))
 
                 current_dfs = {}
                 generate = True
 
+                # loops through values for this specific category
                 for specific_entry, new_df in unique_specific_entries.items():
+                    # checks if size is too small for anonymity
                     if new_df.shape[0] < 5:
                         generate = False
                         break
@@ -85,90 +95,114 @@ def get_data_groups(inputFile: str) -> dict[str, pd.DataFrame]:
 
     return output_dfs
 
+# gets a list of categories which should generate a bar chart, with shortened names
 def get_bar_cats(df: pd.DataFrame) -> list[tuple[str, str]]:
     return [
         (cat.split(":")[0], cat) for cat in df if cat.startswith("Q") and cat[1].isdigit() and "TEXT" not in cat
     ]
 
+# gets a list of categories which should generate a list of text responses
 def get_text_cats(df: pd.DataFrame) -> list[str]:
     return [
         cat for cat in df if "TEXT" in cat or "Q31" in cat
     ]
 
-def plot_df(df: pd.DataFrame, bar_cats: list[tuple[str, str]], text_cats: list[str], name: str):
-    with PdfPages(f"out/{name}.pdf") as pdf:
-        i = 0
+def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], pdf: PdfPages):
+    # first page
+    i = 0
+    fig, axes = plt.subplots(3, 1, figsize=(8.5, 11))
 
-        # BAR CHARTS
-        # first page
-        fig, axes = plt.subplots(3, 1, figsize=(8.5, 11))
-
-        for (cat_name, cat) in bar_cats:
-            try:
-                ## exclude Q31 (more of a freetext)
-                if cat_name == "Q31":
-                    continue
-
-                print(cat)
-                if not "Check all that apply" in cat:
-                    a = df[cat].value_counts().sort_index().rename(cat_name).to_frame().transpose()
-                    a.plot.barh(stacked=True, ax=axes[i])
-                    total = df[cat].dropna().shape[0]
-                else:
-                    values_df = df[cat].apply(lambda x: x.split(',') if not pd.isna(x) else ["No Answer"])
-                    values = np.unique(values_df.sum())
-                    values.sort()
-                    a = pd.DataFrame({val:np.sum([val in x for x in values_df]) for val in values}, index=[cat_name])
-                    a.plot.barh(ax=axes[i])
-                    total = df[cat].shape[0]
-
-                # cut off lables on the legend
-                max_legend_label_length = 30
-                handles, labels = axes[i].get_legend_handles_labels()
-                shortened_labels = [(label[:max_legend_label_length] + '...' if len(label) > max_legend_label_length else label) + ' ({:} / {:.1%})'.format(a[label][cat_name], a[label][cat_name]/total) for label in labels]
-
-                axes[i].legend(handles, shortened_labels, bbox_to_anchor=(1.0, -0.25), ncol=2)
-                axes[i].set_title("\n".join(wrap(cat + f" [Responses: {total}]", 60)), wrap=True)
-
-                i += 1
-
-                # subsequent pages
-                if i % 3 == 0:
-                    fig.tight_layout()
-                    pdf.savefig()
-                    fig, axes = plt.subplots(3, 1, figsize=(8.5, 11))
-                    i = 0
-
-            except TypeError as e:
-                print(traceback.format_exc())
-                print(e)
-        
-        if i % 3 != 0:
-            fig.tight_layout()
-            pdf.savefig()
-
-        # TEXT RESPONSES
-        for cat in text_cats:
-            fig, axes = plt.subplots(1, 1, figsize=(8.5, 11))
-            axes.axis('off')
-            values_df = df[cat].value_counts().to_frame().transpose()
-            if values_df.empty:
+    for (cat_name, cat) in bar_cats:
+        try:
+            # exclude Q31 (more of a freetext)
+            if cat_name == "Q31":
                 continue
 
-            axes.set_title(cat, wrap=True)
-            axes.text(0, 0, "\n\n".join(["\n".join(wrap(i, 60))[:180] + ("..." if len(i) > 180 else "") + f" ({values_df[i][cat]})" for i in values_df][:10]) + ("\n\n..." if values_df.shape[1] > 10 else ""), fontsize=8)
+            print(cat)
 
-            pdf.savefig()
+            # one choice vs multi select
+            if not "Check all that apply" in cat:
+                # goal is to create a dataframe with values and frequency, we want this sorted by alpha order (sort_index)
+                plottable_df = df[cat].value_counts().sort_index().rename(cat_name).to_frame().transpose()
+                
+                plottable_df.plot.barh(stacked=True, ax=axes[i])
+                total = df[cat].dropna().shape[0]
+            else:
+                # multi select values are split by ","
+                values_df = df[cat].apply(lambda x: x.split(',') if not pd.isna(x) else ["No Answer"])
+                values = np.unique(values_df.sum())
+                # we want to sort the values by alpha order
+                values.sort()
 
+                plottable_df = pd.DataFrame({val:np.sum([val in x for x in values_df]) for val in values}, index=[cat_name])
+
+                plottable_df.plot.barh(ax=axes[i])
+                total = df[cat].shape[0]
+
+            # cut off lables on the legend
+            max_legend_label_length = 30
+            handles, labels = axes[i].get_legend_handles_labels()
+            shortened_labels = [(label[:max_legend_label_length] + '...' if len(label) > max_legend_label_length else label) + ' ({:} / {:.1%})'.format(plottable_df[label][cat_name], plottable_df[label][cat_name]/total) for label in labels]
+
+            axes[i].legend(handles, shortened_labels, bbox_to_anchor=(1.0, -0.25), ncol=2)
+            axes[i].set_title("\n".join(wrap(cat + f" [Responses: {total}]", 60)), wrap=True)
+
+            i += 1
+
+            # save old page, create a new page
+            if i % 3 == 0:
+                fig.tight_layout()
+                pdf.savefig()
+                fig, axes = plt.subplots(3, 1, figsize=(8.5, 11))
+                i = 0
+
+        # occurs when no data to plot
+        except TypeError as e:
+            print(traceback.format_exc())
+            print(e)
+    
+    # last page (if necessary)
+    if i % 3 != 0:
+        fig.tight_layout()
+        pdf.savefig()
+
+def plot_text_cats(df: pd.DataFrame, text_cats: list[str], pdf: PdfPages):
+    for cat in text_cats:
+        fig, axes = plt.subplots(1, 1, figsize=(8.5, 11))
+        axes.axis('off')
+
+        answers_df = df[cat].value_counts().to_frame().transpose()
+        if answers_df.empty:
+            continue
+
+        # to each answer => wrap at 60 characters, cutoff at 180 characters, add count at the end [cut off to 10 answers]
+        shortened_answer_list = [
+            "\n".join(wrap(i, 60))[:180] + ("..." if len(i) > 180 else "") + f" ({answers_df[i][cat]})" for i in answers_df
+        ][:10]
+
+        axes.set_title(cat, wrap=True)
+        axes.text(
+            0, 
+            0, 
+            "\n\n".join(shortened_answer_list) + ("\n\n..." if answers_df.shape[1] > 10 else ""), 
+            fontsize=8
+        )
+
+        pdf.savefig()
+
+def generate_pdf(df: pd.DataFrame, bar_cats: list[tuple[str, str]], text_cats: list[str], name: str):
+    with PdfPages(f"out/{name}.pdf") as pdf:
+        plot_bar_charts(df, bar_cats, pdf)
+        plot_text_cats(df, bar_cats, pdf)
 
 
 if __name__ == '__main__':
     start = time.time()
-    dfs_to_process = get_data_groups("./data/sample_data.txt")
+    dfs_to_process = get_data_groups("./data/sample_survey_data_20230814.xlsx")
     print(time.time() - start)
     bar_cats = get_bar_cats(dfs_to_process['All'])
     text_cats = get_text_cats(dfs_to_process['All'])
     for name, df in dfs_to_process.items():
         print(name)
-        plot_df(df, bar_cats, text_cats, name)
+        generate_pdf(df, bar_cats, text_cats, name)
         print(time.time() - start)
