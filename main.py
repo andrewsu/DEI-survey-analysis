@@ -7,6 +7,18 @@ from textwrap import wrap
 import traceback
 from itertools import chain
 
+# generates a negative or positive score based on an index and length
+# Example with length=5 (odd): 0 -> -2, 1 -> -1, 2 -> 0, 3 -> 1, 4 -> 2
+# Example with length=4 (even): 0 -> -2, 1 -> -1, 2 -> 1, 3 -> 2
+def get_score(index: int, length: int):
+    if length % 2 == 0:
+        if index < length/2:
+            return index - length/2
+        else:
+            return index - length/2 + 1
+    else:
+        return index - (length-1)/2
+
 # replaces some terms to ensure they are alphabetically ordered for bar chart generation
 def order_values(df: pd.DataFrame):
     # special case for numeric ordering (put 2/3 digit numbers after 1 digit numbers)
@@ -14,7 +26,7 @@ def order_values(df: pd.DataFrame):
     df.replace([r'^(\d\d)'], [r'A/\1'], inplace=True, regex=True)
 
     # specifies how groups of values should be ordered in bar graphs
-    val_orders = [
+    ordered_groups = [
         [r'(?i)^(Strongly agree)', r'(?i)^((?:Somewhat )*agree)', r'(?i)^(Neither agree nor disagree)', r'(?i)^((?:Somewhat )*disagree)', r'(?i)^(Strongly disagree)'],
         [r'(?i)^(Very likely)', r'(?i)^(Likely)', r'(?i)^(Somewhat likely)',r'(?i)^(Somewhat unlikely)', r'(?i)^(Unlikely)', r'(?i)^(Very unlikely)'],
         [r'(?i)^(Very satisfied)', r'(?i)^(Satisfied)', r'(?i)^(Neutral|Neither dissatisfied nor satisfied)', r'(?i)^(Dissatisfied)', r'(?i)^(Very dissatisfied)', r'(?i)^(Does not apply to me)'],
@@ -24,17 +36,24 @@ def order_values(df: pd.DataFrame):
         [r'(?i)^(Yes, I have all the.*)', r'(?i)^(Somewhat)\s*$', r'(?i)^(Moderately)\s*$', r'(?i)^(A little)\s*$', r'(?i)^(Not at all)\s*$']
     ]
 
-    print([len(v) for v in val_orders])
+    print([len(v) for v in ordered_groups])
 
-    original_vals = list(chain.from_iterable(val_orders))
+    original_vals = list(chain.from_iterable(ordered_groups))
 
     # These new values are just the old values prefaced with an index (to change the alpha ordering)
-    new_vals = list(chain.from_iterable([[f"{index}/\\1" for index in range(len(ordered_group))] for ordered_group in val_orders]))
+    new_vals = list(chain.from_iterable([[f"{index}/\\1" for index in range(len(ordered_group))] for ordered_group in ordered_groups]))
 
     df.replace(original_vals, new_vals, inplace=True, regex=True)
 
     # prefer not to say answers should be treated as no answer (NaN)
     df.replace([r'(?i).*prefer not to say.*'], [np.NaN], inplace=True, regex=True)
+
+
+    ## generate numbers
+    numbers = [
+        [get_score(index, len(ordered_group)) for index in range(len(ordered_group))] for ordered_group in ordered_groups
+    ]
+    print(numbers)
 
 # returns a dict of dataframes for which a report should be produced, indexed by the name of that group of data
 def get_data_groups(inputFile: str) -> dict[str, pd.DataFrame]:
@@ -158,6 +177,7 @@ def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], pdf: PdfP
             if i % 3 == 0:
                 fig.tight_layout()
                 pdf.savefig()
+                plt.close(fig)
                 fig, axes = plt.subplots(3, 1, figsize=(8.5, 11))
                 i = 0
 
@@ -170,6 +190,7 @@ def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], pdf: PdfP
     if i % 3 != 0:
         fig.tight_layout()
         pdf.savefig()
+        plt.close(fig)
 
 def plot_text_cats(df: pd.DataFrame, text_cats: list[str], pdf: PdfPages):
     for cat in text_cats:
@@ -194,6 +215,7 @@ def plot_text_cats(df: pd.DataFrame, text_cats: list[str], pdf: PdfPages):
         )
 
         pdf.savefig()
+        plt.close(fig)
 
 def generate_pdf(df: pd.DataFrame, bar_cats: list[tuple[str, str]], text_cats: list[str], name: str):
     with PdfPages(f"out/{name}.pdf") as pdf:
