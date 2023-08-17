@@ -9,6 +9,8 @@ from itertools import chain
 
 # replaces some terms to ensure they are alphabetically ordered for bar chart generation
 def order_values(df: pd.DataFrame):
+
+    # specifies how groups of values should be ordered in bar graphs
     val_orders = [
         [r'(?i)^(Strongly agree)', r'(?i)^((?:Somewhat )*agree)', r'(?i)^(Neither agree nor disagree)', r'(?i)^((?:Somewhat )*disagree)', r'(?i)^(Strongly disagree)'],
         [r'(?i)^(Very likely)', r'(?i)^(Likely)', r'(?i)^(Somewhat likely)',r'(?i)^(Somewhat unlikely)', r'(?i)^(Unlikely)', r'(?i)^(Very unlikely)'],
@@ -20,15 +22,17 @@ def order_values(df: pd.DataFrame):
     ]
 
     original_vals = list(chain.from_iterable(val_orders))
-    new_vals = list(chain.from_iterable([[f"{val}/\\1" for val in range(len(order))] for order in val_orders]))
+
+    # These new values are just the old values prefaced with an index (to change the alpha ordering)
+    new_vals = list(chain.from_iterable([[f"{index}/\\1" for index in range(len(ordered_group))] for ordered_group in val_orders]))
 
     df.replace(original_vals, new_vals, inplace=True, regex=True)
 
-    # special case for numeric ordering
+    # special case for numeric ordering (put 2/3 digit numbers after 1 digit numbers)
     df.replace([r'^(\d\d\d)'], [r'B/\1'], inplace=True, regex=True)
     df.replace([r'^(\d\d)'], [r'A/\1'], inplace=True, regex=True)
 
-    # we don't want to count this as a choice
+    # prefer not to say answers should be treated as no answer (NaN)
     df.replace([r'(?i).*prefer not to say.*'], [np.NaN], inplace=True, regex=True)
 
 # returns a dict of dataframes for which a report should be produced, indexed by the name of that group of data
