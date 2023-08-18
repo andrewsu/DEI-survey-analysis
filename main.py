@@ -97,7 +97,7 @@ def get_data_groups(inputFile: str) -> dict[str, pd.DataFrame]:
                 # multi select
                 if specific_category == 'Q3:Ethnicity/Race (Check all that apply) - Selected Choice':
                     values = np.unique(base_entry_df[specific_category].dropna().apply(lambda x: x.split(',')).sum())
-                    unique_specific_entries = {val:base_entry_df.loc[base_entry_df[specific_category].str.contains(val, na=False)] for val in values}
+                    unique_specific_entries = {val:base_entry_df.loc[base_entry_df[specific_category].str.contains(val, na=False, regex=False)] for val in values}
                 # not multi select
                 else:
                     unique_specific_entries = dict(tuple(base_entry_df.groupby(specific_category)))
