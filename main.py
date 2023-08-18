@@ -71,19 +71,19 @@ def get_data_groups(inputFile: str) -> dict[str, pd.DataFrame]:
     # Replacement (useful for sorting)
     order_values(input_df)
 
-    # create base
-    if input_df.shape[0] < 5:
-        return {}
-    output_dfs['All'] = input_df
-
     # base level categories
-    base_categories = ['Supervisor for Reporting', 'Department/Org Level 1', 'Division/Org Level 2', 'Strategic Unit/Org Level 3']
+    base_categories = ['All', 'Supervisor for Reporting', 'Department/Org Level 1', 'Division/Org Level 2', 'Strategic Unit/Org Level 3']
 
     # need to handle multiple ehtnicities being selected
     specific_categories = ['Q1:Gender Identity - Selected Choice', 'Q3:Ethnicity/Race (Check all that apply) - Selected Choice']
 
+
     for base_category in base_categories:
-        unique_base_entries = dict(tuple(input_df.groupby(base_category)))
+        # "All" only has one value -> we want to create reports for each specific category though
+        if base_category == 'All':
+            unique_base_entries = {'All': input_df}
+        else:
+            unique_base_entries = dict(tuple(input_df.groupby(base_category)))
 
         # loops through values for this base category
         for base_entry, base_entry_df in unique_base_entries.items():
@@ -109,8 +109,12 @@ def get_data_groups(inputFile: str) -> dict[str, pd.DataFrame]:
                 for specific_entry, new_df in unique_specific_entries.items():
                     # checks if size is too small for anonymity
                     if new_df.shape[0] < 5:
-                        generate = False
-                        break
+                        if base_category == 'All':
+                            # for 'All' we do not need all values to be over 5, only the current value
+                            continue
+                        else:
+                            generate = False
+                            break
 
                     current_dfs[f"{base_entry}+{specific_entry}"] = new_df
                 
