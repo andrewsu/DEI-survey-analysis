@@ -203,7 +203,7 @@ def plot_text_cats(df: pd.DataFrame, text_cats: list[str], pdf: PdfPages):
 
         # to each answer => wrap at 60 characters, cutoff at 180 characters, add count at the end [cut off to 10 answers]
         shortened_answer_list = [
-            "\n".join(wrap(i, 60))[:180] + ("..." if len(i) > 180 else "") + f" ({answers_df[i][cat]})" for i in answers_df
+            "\n".join(wrap(i, 60))[:180] + ("..." if len(i) > 180 else "") + f" ({answers_df[i]['count']})" for i in answers_df
         ][:10]
 
         axes.set_title(cat, wrap=True)
@@ -219,7 +219,7 @@ def plot_text_cats(df: pd.DataFrame, text_cats: list[str], pdf: PdfPages):
 
 def generate_pdf(df: pd.DataFrame, bar_cats: list[tuple[str, str]], text_cats: list[str], name: str):
     with PdfPages(f"out/{name}.pdf") as pdf:
-        plot_bar_charts(df, bar_cats, pdf)
+        #plot_bar_charts(df, bar_cats, pdf)
         plot_text_cats(df, text_cats, pdf)
 
 
@@ -232,4 +232,8 @@ if __name__ == '__main__':
     for name, df in dfs_to_process.items():
         print(name)
         generate_pdf(df, bar_cats, text_cats, name)
+
+        # make sure everything is cleared from last plot
+        plt.close('all')
+
         print(time.time() - start)
