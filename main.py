@@ -96,8 +96,8 @@ def get_data_groups(inputFile: str) -> dict[str, pd.DataFrame]:
             for specific_category in specific_categories:
                 # multi select
                 if specific_category == 'Q3:Ethnicity/Race (Check all that apply) - Selected Choice':
-                    values = np.unique(base_entry_df[specific_category].apply(lambda x: x.split(',')).sum())
-                    unique_specific_entries = {val:base_entry_df.loc[base_entry_df[specific_category].str.contains(val)] for val in values}
+                    values = np.unique(base_entry_df[specific_category].dropna().apply(lambda x: x.split(',')).sum())
+                    unique_specific_entries = {val:base_entry_df.loc[base_entry_df[specific_category].str.contains(val, na=False)] for val in values}
                 # not multi select
                 else:
                     unique_specific_entries = dict(tuple(base_entry_df.groupby(specific_category)))
@@ -219,13 +219,13 @@ def plot_text_cats(df: pd.DataFrame, text_cats: list[str], pdf: PdfPages):
 
 def generate_pdf(df: pd.DataFrame, bar_cats: list[tuple[str, str]], text_cats: list[str], name: str):
     with PdfPages(f"out/{name}.pdf") as pdf:
-        #plot_bar_charts(df, bar_cats, pdf)
+        plot_bar_charts(df, bar_cats, pdf)
         plot_text_cats(df, text_cats, pdf)
 
 
 if __name__ == '__main__':
     start = time.time()
-    dfs_to_process = get_data_groups("./data/sample_survey_data_20230814.xlsx")
+    dfs_to_process = get_data_groups("./data/sample_survey_data_20230817.xlsx")
     print(time.time() - start)
     bar_cats = get_bar_cats(dfs_to_process['All'])
     text_cats = get_text_cats(dfs_to_process['All'])
