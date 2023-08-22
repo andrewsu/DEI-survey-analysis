@@ -20,7 +20,7 @@ def get_score(index: int, length: int):
         return index - (length-1)/2
 
 # replaces some terms to ensure they are alphabetically ordered for bar chart generation
-def order_values(df: pd.DataFrame):
+def order_and_score_values(df: pd.DataFrame, bar_cats: list[tuple[str, str]]):
     # special case for numeric ordering (put 2/3 digit numbers after 1 digit numbers)
     df.replace([r'^(\d\d\d)'], [r'B/\1'], inplace=True, regex=True)
     df.replace([r'^(\d\d)'], [r'A/\1'], inplace=True, regex=True)
@@ -43,21 +43,25 @@ def order_values(df: pd.DataFrame):
     # These new values are just the old values prefaced with an index (to change the alpha ordering)
     new_vals = list(chain.from_iterable([[f"{index}/\\1" for index in range(len(ordered_group))] for ordered_group in ordered_groups]))
 
+    ## generate scores
+    scores = [
+        [get_score(index, len(ordered_group)) for index in range(len(ordered_group))] for ordered_group in ordered_groups
+    ]
+
+    flat_scores = list(chain.from_iterable(scores))
+    
+    for (_, cat) in bar_cats:
+        # convert values to scores
+        df[f"scores-{cat}"] = df[cat].replace(original_vals, flat_scores, regex=True).apply(pd.to_numeric,errors='coerce')
+
+    # fix alpha ordering of order groups
     df.replace(original_vals, new_vals, inplace=True, regex=True)
 
     # prefer not to say answers should be treated as no answer (NaN)
     df.replace([r'(?i).*prefer not to say.*'], [np.NaN], inplace=True, regex=True)
 
-
-    ## generate numbers
-    numbers = [
-        [get_score(index, len(ordered_group)) for index in range(len(ordered_group))] for ordered_group in ordered_groups
-    ]
-    print(numbers)
-
-# returns a dict of dataframes for which a report should be produced, indexed by the name of that group of data
-def get_data_groups(inputFile: str) -> dict[str, pd.DataFrame]:
-    output_dfs = {}
+# gets the dataframe from a file
+def get_dataframe(inputFile: str):
 
     if inputFile.endswith(".xlsx"):
         input_df = pd.read_excel(inputFile)
@@ -68,15 +72,20 @@ def get_data_groups(inputFile: str) -> dict[str, pd.DataFrame]:
     # Drop rows with all empty cells
     input_df.dropna(axis=0, how='all', inplace=True)
 
-    # Replacement (useful for sorting)
-    order_values(input_df)
+    return input_df
+
+# returns a dict of dataframes for which a report should be produced, indexed by the name of that group of data
+def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> dict[str, pd.DataFrame]:
+    output_dfs = {}
+
+    # Replacement (useful for sorting)/Value scoring
+    order_and_score_values(input_df, bar_cats)
 
     # base level categories
     base_categories = ['All', 'Supervisor for Reporting', 'Department/Org Level 1', 'Division/Org Level 2', 'Strategic Unit/Org Level 3']
 
     # need to handle multiple ehtnicities being selected
     specific_categories = ['Q1:Gender Identity - Selected Choice', 'Q3:Ethnicity/Race (Check all that apply) - Selected Choice']
-
 
     for base_category in base_categories:
         # "All" only has one value -> we want to create reports for each specific category though
@@ -229,10 +238,14 @@ def generate_pdf(df: pd.DataFrame, bar_cats: list[tuple[str, str]], text_cats: l
 
 if __name__ == '__main__':
     start = time.time()
-    dfs_to_process = get_data_groups("./data/sample_survey_data_20230817.xlsx")
+    main_df = get_dataframe("./data/sample_survey_data_20230817.xlsx")
+    bar_cats = get_bar_cats(main_df)
+    text_cats = get_text_cats(main_df)
+
+    dfs_to_process = get_data_groups(main_df, bar_cats)
+
     print(time.time() - start)
-    bar_cats = get_bar_cats(dfs_to_process['All'])
-    text_cats = get_text_cats(dfs_to_process['All'])
+
     for name, df in dfs_to_process.items():
         print(name)
         generate_pdf(df, bar_cats, text_cats, name)
