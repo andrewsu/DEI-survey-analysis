@@ -181,8 +181,11 @@ def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], pdf: PdfP
             handles, labels = axes[i].get_legend_handles_labels()
             shortened_labels = [(label[:max_legend_label_length] + '...' if len(label) > max_legend_label_length else label) + ' ({:} / {:.1%})'.format(plottable_df[label][cat_name], plottable_df[label][cat_name]/total) for label in labels]
 
+            # get the score (scores are negative better, so flip)
+            score = -df[f"scores-{cat}"].mean()
+
             axes[i].legend(handles, shortened_labels, bbox_to_anchor=(1.0, -0.25), ncol=2)
-            axes[i].set_title("\n".join(wrap(cat + f" [Responses: {total}]", 60)), wrap=True)
+            axes[i].set_title("\n".join(wrap(cat + f" [Responses: {total}] (Score: {score:.2})", 60)), wrap=True)
 
             i += 1
 
