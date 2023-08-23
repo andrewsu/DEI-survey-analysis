@@ -144,7 +144,10 @@ def get_text_cats(df: pd.DataFrame) -> list[str]:
         cat for cat in df if "TEXT" in cat or "Q31" in cat
     ]
 
-def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], pdf: PdfPages):
+## dict used in next function for comparing to previous scores ("dfname-cat")
+prev_scores = {}
+
+def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], pdf: PdfPages, name: str):
     # first page
     i = 0
     fig, axes = plt.subplots(3, 1, figsize=(8.5, 11))
@@ -183,9 +186,27 @@ def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], pdf: PdfP
 
             # get the score (scores are negative better, so flip)
             score = -df[f"scores-{cat}"].mean()
+            if not np.isnan(score):
+                prev_scores[f"{name}-{cat}"] = score
+
+            # add score comparisons
+            score_comps = []
+            split_name = name.split('+')
+
+            if name != "All" and f"All-{cat}" in prev_scores:
+                score_comps.append(("Institute", prev_scores[f"All-{cat}"]))
+            if len(split_name) > 1 and split_name[0] != "All" and f"{split_name[0]}-{cat}" in prev_scores:
+                score_comps.append((split_name[0], prev_scores[f"{split_name[0]}-{cat}"]))
+            if len(split_name) > 1 and split_name[0] != "All" and f"All+{split_name[1]}-{cat}" in prev_scores:
+                score_comps.append((split_name[1], prev_scores[f"All+{split_name[1]}-{cat}"]))
+
+            if len(score_comps) > 0:
+                score_str = "<Comparisons: {}>".format(",".join([f"{comp[0]}/{comp[1]:.2}" for comp in score_comps]))
+            else:
+                score_str = ""
 
             axes[i].legend(handles, shortened_labels, bbox_to_anchor=(1.0, -0.25), ncol=2)
-            axes[i].set_title("\n".join(wrap(cat + f" [Responses: {total}] (Score: {score:.2})", 60)), wrap=True)
+            axes[i].set_title("\n".join(wrap(cat + f" [Responses: {total}] (Score: {score:.2}) {score_str}", 60)), wrap=True)
 
             i += 1
 
@@ -235,7 +256,7 @@ def plot_text_cats(df: pd.DataFrame, text_cats: list[str], pdf: PdfPages):
 
 def generate_pdf(df: pd.DataFrame, bar_cats: list[tuple[str, str]], text_cats: list[str], name: str):
     with PdfPages(f"out/{name}.pdf") as pdf:
-        plot_bar_charts(df, bar_cats, pdf)
+        plot_bar_charts(df, bar_cats, pdf, name)
         plot_text_cats(df, text_cats, pdf)
 
 
