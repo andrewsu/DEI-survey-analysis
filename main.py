@@ -201,12 +201,15 @@ def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], pdf: PdfP
                 score_comps.append((split_name[1], prev_scores[f"All+{split_name[1]}-{cat}"]))
 
             if len(score_comps) > 0:
-                score_str = "<Comparisons: {}>".format(",".join([f"{comp[0]}/{comp[1]:.2}" for comp in score_comps]))
+                score_str = "\n".join([f"{comp[0]}/{comp[1]:.2}" for comp in score_comps])
             else:
                 score_str = ""
 
             axes[i].legend(handles, shortened_labels, bbox_to_anchor=(1.0, -0.25), ncol=2)
-            axes[i].set_title("\n".join(wrap(cat + f" [Responses: {total}] (Score: {score:.2}) {score_str}", 60)), wrap=True)
+            axes[i].set_title("\n".join(wrap(cat + f" [Responses: {total}]", 60)), wrap=True, ha="left", x=-0)
+
+            # put score on fig, add bkg with bbox=dict(facecolor='red', alpha=0.5)
+            axes[i].text(1, 1, f"Score: {score:.2}\n{score_str}", verticalalignment='bottom', horizontalalignment='right', transform=axes[i].transAxes)
 
             i += 1
 
