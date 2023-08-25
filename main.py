@@ -90,7 +90,7 @@ def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> 
     order_and_score_values(input_df, bar_cats)
 
     # base level categories
-    base_categories = ['All', 'Supervisor for Reporting', 'Department/Org Level 1', 'Division/Org Level 2', 'Strategic Unit/Org Level 3']
+    base_categories = ['All', 'Supervisor for Reporting', 'Strategic Unit/Org Level 3', 'Division/Org Level 2', 'Department/Org Level 1']
 
     # need to handle multiple ehtnicities being selected
     specific_categories = ['Q1:Gender Identity - Selected Choice', 'Q3:Ethnicity/Race (Check all that apply) - Selected Choice']
@@ -212,12 +212,27 @@ def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], pdf: PdfP
             score_comps = []
             split_name = name.split('+')
 
+            # institute score comp
             if name != "All" and f"All-{cat}" in prev_scores:
                 score_comps.append(("Institute", prev_scores[f"All-{cat}"]))
+            
+            # dept/report name score comp
             if len(split_name) > 1 and split_name[0] != "All" and f"{split_name[0]}-{cat}" in prev_scores:
                 score_comps.append((split_name[0], prev_scores[f"{split_name[0]}-{cat}"]))
+            
+            # gender/ethnicty score comp
             if len(split_name) > 1 and split_name[0] != "All" and f"All+{split_name[1]}-{cat}" in prev_scores:
                 score_comps.append((split_name[1], prev_scores[f"All+{split_name[1]}-{cat}"]))
+
+            # parent depts score comps
+            if split_name[0] in parents:
+                for parent in parents[split_name[0]]:
+                    if f"{parent}-{cat}" in prev_scores:
+                        score_comps.append((parent, prev_scores[f"{parent}-{cat}"]))
+                    
+                    # parent gender/ethnicty comp
+                    if len(split_name) > 1 and f"{parent}+{split_name[1]}-{cat}" in prev_scores:
+                        score_comps.append((f"{parent}/{split_name[1]}", prev_scores[f"{parent}+{split_name[1]}-{cat}"]))
 
             if len(score_comps) > 0:
                 score_str = "\n".join([f"{comp[0]} Score: {comp[1]:.2}" for comp in score_comps])
