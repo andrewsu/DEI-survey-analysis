@@ -213,12 +213,8 @@ def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], pdf: PdfP
             split_name = name.split('+')
 
             # institute score comp
-            if name != "All" and f"All-{cat}" in prev_scores:
+            if len(split_name) == 1 and name != "All" and f"All-{cat}" in prev_scores:
                 score_comps.append(("Institute", prev_scores[f"All-{cat}"]))
-            
-            # dept/report name score comp
-            if len(split_name) > 1 and split_name[0] != "All" and f"{split_name[0]}-{cat}" in prev_scores:
-                score_comps.append((split_name[0], prev_scores[f"{split_name[0]}-{cat}"]))
             
             # gender/ethnicty score comp
             if len(split_name) > 1 and split_name[0] != "All" and f"All+{split_name[1]}-{cat}" in prev_scores:
@@ -227,7 +223,7 @@ def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], pdf: PdfP
             # parent depts score comps
             if split_name[0] in parents:
                 for parent in parents[split_name[0]]:
-                    if f"{parent}-{cat}" in prev_scores:
+                    if len(split_name) == 1 and f"{parent}-{cat}" in prev_scores:
                         score_comps.append((parent, prev_scores[f"{parent}-{cat}"]))
                     
                     # parent gender/ethnicty comp
