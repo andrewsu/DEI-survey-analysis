@@ -7,6 +7,12 @@ from textwrap import wrap
 import traceback
 from itertools import chain
 
+# global variables used in program
+## dict used in next function for comparing to previous scores ("dfname-cat")
+prev_scores = {}
+## dict to store arrays of parent groupings for a given grouping
+parents = {}
+
 # generates a negative or positive score based on an index and length
 # Example with length=5 (odd): 0 -> -2, 1 -> -1, 2 -> 0, 3 -> 1, 4 -> 2
 # Example with length=4 (even): 0 -> -2, 1 -> -1, 2 -> 1, 3 -> 2
@@ -87,6 +93,12 @@ def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> 
     # need to handle multiple ehtnicities being selected
     specific_categories = ['Q1:Gender Identity - Selected Choice', 'Q3:Ethnicity/Race (Check all that apply) - Selected Choice']
 
+    # specifies parent relationships
+    parent_categories = {
+         'Department/Org Level 1': ['Division/Org Level 2', 'Strategic Unit/Org Level 3'],
+         'Division/Org Level 2': ['Strategic Unit/Org Level 3']
+    }
+
     for base_category in base_categories:
         # "All" only has one value -> we want to create reports for each specific category though
         if base_category == 'All':
@@ -99,6 +111,14 @@ def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> 
             # checks if size is too small for anonymity
             if base_entry_df.shape[0] < 5:
                 continue
+
+            # add parents
+            if base_category in parent_categories:
+                for parent_category in parent_categories[base_category]:
+                    if base_entry_df[parent_category].value_counts().shape[0] == 1:
+                        if not base_entry in parents:
+                            parents[base_entry] = []
+                        parents[base_entry].append(base_entry_df[parent_category].value_counts().index[0])
 
             output_dfs[base_entry] = base_entry_df
 
@@ -143,9 +163,6 @@ def get_text_cats(df: pd.DataFrame) -> list[str]:
     return [
         cat for cat in df if "TEXT" in cat or "Q31" in cat
     ]
-
-## dict used in next function for comparing to previous scores ("dfname-cat")
-prev_scores = {}
 
 def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], pdf: PdfPages, name: str):
     # first page
