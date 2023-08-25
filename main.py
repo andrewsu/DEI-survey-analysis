@@ -1,7 +1,9 @@
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+import os
 import pandas as pd
+import sys
 import time
 from textwrap import wrap
 import traceback
@@ -282,7 +284,17 @@ def generate_pdf(df: pd.DataFrame, bar_cats: list[tuple[str, str]], text_cats: l
 
 if __name__ == '__main__':
     start = time.time()
-    main_df = get_dataframe("./data/sample_survey_data_20230817.xlsx")
+
+    if len(sys.argv) > 1:
+        input_filename = sys.argv[1]
+    else:
+        input_filename = "./data/sample_survey_data_20230817.xlsx"
+
+    if not os.path.exists(input_filename):
+        print(f"Error: The file '{input_filename}' does not exist. Specify a valid input file.")
+        sys.exit(1)
+
+    main_df = get_dataframe(input_filename)
     bar_cats = get_bar_cats(main_df)
     text_cats = get_text_cats(main_df)
 
