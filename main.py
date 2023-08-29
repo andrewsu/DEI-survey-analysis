@@ -83,14 +83,14 @@ def get_dataframe(inputFile: str):
     # Drop rows with all empty cells
     input_df.dropna(axis=0, how='all', inplace=True)
 
-    # ordering of certain values (useful for sorting)/Value scoring
-    order_and_score_values(input_df, bar_cats)
-
     return input_df
 
 # returns a dict of dataframes for which a report should be produced, indexed by the name of that group of data
 def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> dict[str, pd.DataFrame]:
     output_dfs = {}
+
+    # Replacement (useful for sorting)/Value scoring
+    order_and_score_values(input_df, bar_cats)
 
     # base level categories
     base_categories = ['All', 'Supervisor for Reporting', 'Strategic Unit/Org Level 3', 'Division/Org Level 2', 'Department/Org Level 1']
