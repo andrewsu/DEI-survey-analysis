@@ -6,8 +6,13 @@ import pandas as pd
 import sys
 import time
 from textwrap import wrap
-import traceback
 from itertools import chain
+import warnings
+
+from logger import Logger
+
+# used for logging
+logger = Logger()
 
 # global variables used in program
 ## dict used in next function for comparing to previous scores ("dfname-cat")
@@ -43,8 +48,6 @@ def order_and_score_values(df: pd.DataFrame, bar_cats: list[tuple[str, str]]):
         [r'(?i)^(Very prepared)', r'(?i)^(Somewhat prepared)', r'(?i)^(Moderately prepared)', r'(?i)^(Slightly prepared)'],
         [r'(?i)^(Yes, I have all the.*)', r'(?i)^(Somewhat)\s*$', r'(?i)^(Moderately)\s*$', r'(?i)^(A little)\s*$', r'(?i)^(Not at all)\s*$']
     ]
-
-    print([len(v) for v in ordered_groups])
 
     original_vals = list(chain.from_iterable(ordered_groups))
 
@@ -177,8 +180,6 @@ def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], pdf: PdfP
             if cat_name == "Q31":
                 continue
 
-            print(cat)
-
             # one choice vs multi select
             if not "Check all that apply" in cat:
                 # goal is to create a dataframe with values and frequency, we want this sorted by alpha order (sort_index)
@@ -253,8 +254,11 @@ def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], pdf: PdfP
 
         # occurs when no data to plot
         except TypeError as e:
-            print(traceback.format_exc())
-            print(e)
+            if str(e) == "no numeric data to plot":
+                modified_cat = cat.replace('\r\n', ' ').replace('\n', ' ')
+                logger.log_data(f"The question had no responses (for this report): \"{modified_cat}\"")
+            else:
+                raise e
     
     # last page (if necessary)
     if i % 3 != 0:
@@ -294,8 +298,6 @@ def generate_pdf(df: pd.DataFrame, bar_cats: list[tuple[str, str]], text_cats: l
 
 
 if __name__ == '__main__':
-    start = time.time()
-
     if len(sys.argv) > 1:
         input_filename = sys.argv[1]
     else:
@@ -305,19 +307,35 @@ if __name__ == '__main__':
         print(f"Error: The file '{input_filename}' does not exist. Specify a valid input file.")
         sys.exit(1)
 
+    warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
+
     main_df = get_dataframe(input_filename)
     bar_cats = get_bar_cats(main_df)
     text_cats = get_text_cats(main_df)
 
     dfs_to_process = get_data_groups(main_df, bar_cats)
 
-    print(time.time() - start)
+    completed = 0
+    total = len(dfs_to_process.items())
+
+    full_start = time.time()
 
     for name, df in dfs_to_process.items():
-        print(name)
-        generate_pdf(df, bar_cats, text_cats, name)
+        sys.stdout.write(f"\rCompleted {completed}/{total} Reports. Working on {name} report.".ljust(100))
+        logger.log_data(f"[{name}]")
+        start = time.time()
+
+        if name == "All" or name == "All+Female" or name == "NEUROSCIENCE - CA+Female" or name == "NEURO LAB 2+Female" or name == "ACADEMIC RESEARCH+Female" or name == "ACADEMIC RESEARCH" or name == "NEURO LAB 2" or name == "NEUROSCIENCE - CA":
+            generate_pdf(df, bar_cats, text_cats, name)
 
         # make sure everything is cleared from last plot
         plt.close('all')
 
-        print(time.time() - start)
+        logger.log_data(f"Completed in {time.time() - start} seconds")
+        logger.log_data("")
+        logger.write_log()
+
+        completed += 1
+
+    logger.log_data(f"\n\nTotal time = {time.time() - full_start} seconds")
+    logger.write_log()
