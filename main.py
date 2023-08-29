@@ -11,13 +11,13 @@ import warnings
 
 from logger import Logger
 
+## global variables used in program
 # used for logging
 logger = Logger()
 
-# global variables used in program
-## dict used in next function for comparing to previous scores ("dfname-cat")
+# dict used in next function for comparing to previous scores ("dfname-cat")
 prev_scores = {}
-## dict to store arrays of parent groupings for a given grouping
+# dict to store arrays of parent groupings for a given grouping
 parents = {}
 
 # generates a negative or positive score based on an index and length
@@ -83,14 +83,14 @@ def get_dataframe(inputFile: str):
     # Drop rows with all empty cells
     input_df.dropna(axis=0, how='all', inplace=True)
 
+    # ordering of certain values (useful for sorting)/Value scoring
+    order_and_score_values(input_df, bar_cats)
+
     return input_df
 
 # returns a dict of dataframes for which a report should be produced, indexed by the name of that group of data
 def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> dict[str, pd.DataFrame]:
     output_dfs = {}
-
-    # Replacement (useful for sorting)/Value scoring
-    order_and_score_values(input_df, bar_cats)
 
     # base level categories
     base_categories = ['All', 'Supervisor for Reporting', 'Strategic Unit/Org Level 3', 'Division/Org Level 2', 'Department/Org Level 1']
@@ -169,6 +169,7 @@ def get_text_cats(df: pd.DataFrame) -> list[str]:
         cat for cat in df if "TEXT" in cat or "Q31" in cat
     ]
 
+# plots bar charts from the dataframe based on the categories passed in
 def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], pdf: PdfPages, name: str):
     # first page
     i = 0
@@ -266,6 +267,7 @@ def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], pdf: PdfP
         pdf.savefig()
         plt.close(fig)
 
+# "plots" freetext response from dataframe and categories given (just puts each question on a page in the the pdf)
 def plot_text_cats(df: pd.DataFrame, text_cats: list[str], pdf: PdfPages):
     for cat in text_cats:
         fig, axes = plt.subplots(1, 1, figsize=(8.5, 11))
@@ -291,12 +293,13 @@ def plot_text_cats(df: pd.DataFrame, text_cats: list[str], pdf: PdfPages):
         pdf.savefig()
         plt.close(fig)
 
+# generates a pdf report for the dataframe and the appropriate categories
 def generate_pdf(df: pd.DataFrame, bar_cats: list[tuple[str, str]], text_cats: list[str], name: str):
     with PdfPages(f"out/{name}.pdf") as pdf:
         plot_bar_charts(df, bar_cats, pdf, name)
         plot_text_cats(df, text_cats, pdf)
 
-
+# entrypoint
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         input_filename = sys.argv[1]
@@ -307,6 +310,7 @@ if __name__ == '__main__':
         print(f"Error: The file '{input_filename}' does not exist. Specify a valid input file.")
         sys.exit(1)
 
+    # "PerformanceWarning" raised when adding "score" columns in order_and_score_values
     warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 
     main_df = get_dataframe(input_filename)
