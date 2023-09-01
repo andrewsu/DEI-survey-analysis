@@ -293,9 +293,11 @@ def plot_text_cats(df: pd.DataFrame, text_cats: list[str], pdf: PdfPages):
         axes.set_title(cat, wrap=True)
         axes.text(
             0, 
-            0, 
+            .95, 
             "\n\n".join(shortened_answer_list) + ("\n\n..." if answers_df.shape[1] > 10 else ""), 
-            fontsize=8
+            fontsize=8,
+            transform=axes.transAxes,
+            verticalalignment='top'
         )
 
         pdf.savefig()
