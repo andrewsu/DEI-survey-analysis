@@ -246,7 +246,7 @@ def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], pdf: PdfP
                 score_str = ""
 
             axes[i].legend(handles, shortened_labels, bbox_to_anchor=(1.0, -0.25), ncol=2)
-            axes[i].set_title("\n".join(wrap(cat + f" [Responses: {total}]", 60)), wrap=True, ha="left", x=-0)
+            axes[i].set_title("\n".join(wrap(cat + f" [Responses: {total}]", 50)), wrap=True, ha="left", x=-0)
 
             # put score on fig, add bkg with bbox=dict(facecolor='red', alpha=0.5)
             axes[i].text(1, 1, f"Report Score (-{max_scores[cat]} to {max_scores[cat]}): {score:.2}\n{score_str}", verticalalignment='bottom', horizontalalignment='right', transform=axes[i].transAxes)
@@ -337,8 +337,7 @@ if __name__ == '__main__':
         logger.log_data(f"[{name}]")
         start = time.time()
 
-        if name == "All" or name == "All+Female" or name == "NEUROSCIENCE - CA+Female" or name == "NEURO LAB 2+Female" or name == "ACADEMIC RESEARCH+Female" or name == "ACADEMIC RESEARCH" or name == "NEURO LAB 2" or name == "NEUROSCIENCE - CA":
-            generate_pdf(df, bar_cats, text_cats, name)
+        generate_pdf(df, bar_cats, text_cats, name)
 
         # make sure everything is cleared from last plot
         plt.close('all')
