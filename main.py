@@ -19,6 +19,8 @@ logger = Logger()
 prev_scores = {}
 # dict to store arrays of parent groupings for a given grouping
 parents = {}
+# dict to score max absolute scores for each category(question)
+max_scores = {}
 
 # generates a negative or positive score based on an index and length
 # Example with length=5 (odd): 0 -> -2, 1 -> -1, 2 -> 0, 3 -> 1, 4 -> 2
@@ -33,7 +35,9 @@ def get_score(index: int, length: int):
         return index - (length-1)/2
 
 # replaces some terms to ensure they are alphabetically ordered for bar chart generation
-def order_and_score_values(df: pd.DataFrame, bar_cats: list[tuple[str, str]]):
+# creates "score" columns for values that needs a score
+# sets a map from category -> max score (usually 2.0 or 3.0)
+def order_and_score_values(df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> dict[str, int]:
     # special case for numeric ordering (put 2/3 digit numbers after 1 digit numbers)
     df.replace([r'^(\d\d\d)'], [r'B/\1'], inplace=True, regex=True)
     df.replace([r'^(\d\d)'], [r'A/\1'], inplace=True, regex=True)
@@ -65,6 +69,9 @@ def order_and_score_values(df: pd.DataFrame, bar_cats: list[tuple[str, str]]):
         # convert values to scores
         df[f"scores-{cat}"] = df[cat].replace(original_vals, flat_scores, regex=True).apply(pd.to_numeric,errors='coerce')
 
+        # store the maximum abs score
+        max_scores[cat] = max(abs(df[f"scores-{cat}"].min()), df[f"scores-{cat}"].max())
+
     # fix alpha ordering of order groups
     df.replace(original_vals, new_vals, inplace=True, regex=True)
 
@@ -90,6 +97,7 @@ def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> 
     output_dfs = {}
 
     # Replacement (useful for sorting)/Value scoring
+    # gets max scores for each category (to put in context)
     order_and_score_values(input_df, bar_cats)
 
     # base level categories
@@ -241,7 +249,7 @@ def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], pdf: PdfP
             axes[i].set_title("\n".join(wrap(cat + f" [Responses: {total}]", 60)), wrap=True, ha="left", x=-0)
 
             # put score on fig, add bkg with bbox=dict(facecolor='red', alpha=0.5)
-            axes[i].text(1, 1, f"Report Score: {score:.2}\n{score_str}", verticalalignment='bottom', horizontalalignment='right', transform=axes[i].transAxes)
+            axes[i].text(1, 1, f"Report Score (-{max_scores[cat]} to {max_scores[cat]}): {score:.2}\n{score_str}", verticalalignment='bottom', horizontalalignment='right', transform=axes[i].transAxes)
 
             i += 1
 
