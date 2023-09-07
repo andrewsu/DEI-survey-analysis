@@ -76,7 +76,7 @@ def order_and_score_values(df: pd.DataFrame, bar_cats: list[tuple[str, str]]) ->
     df.replace(original_vals, new_vals, inplace=True, regex=True)
 
     # prefer not to say AND does not apply to me answers should be treated as no answer (NaN)
-    df.replace([r'(?i).*prefer not to say.*', r'(?i).*does not apply to me.*'], [np.NaN], inplace=True, regex=True)
+    df.replace([r'(?i).*prefer not to say.*', r'(?i).*does not apply to me.*'], [np.NaN, np.NaN], inplace=True, regex=True)
 
 # gets the dataframe from a file
 def get_dataframe(inputFile: str):
@@ -273,7 +273,8 @@ def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], pdf: PdfP
     if i % 3 != 0:
         fig.tight_layout()
         pdf.savefig()
-        plt.close(fig)
+    
+    plt.close(fig)
 
 # "plots" freetext response from dataframe and categories given (just puts each question on a page in the the pdf)
 def plot_text_cats(df: pd.DataFrame, text_cats: list[str], pdf: PdfPages):
