@@ -46,7 +46,7 @@ def order_and_score_values(df: pd.DataFrame, bar_cats: list[tuple[str, str]]) ->
     ordered_groups = [
         [r'(?i)^(Strongly agree)', r'(?i)^((?:Somewhat )*agree)', r'(?i)^(Neither agree nor disagree)', r'(?i)^((?:Somewhat )*disagree)', r'(?i)^(Strongly disagree)'],
         [r'(?i)^(Very likely)', r'(?i)^(Likely)', r'(?i)^(Somewhat likely)',r'(?i)^(Somewhat unlikely)', r'(?i)^(Unlikely)', r'(?i)^(Very unlikely)'],
-        [r'(?i)^(Very satisfied)', r'(?i)^(Satisfied)', r'(?i)^(Neutral|Neither dissatisfied nor satisfied)', r'(?i)^(Dissatisfied)', r'(?i)^(Very dissatisfied)', r'(?i)^(Does not apply to me)'],
+        [r'(?i)^(Very satisfied)', r'(?i)^(Satisfied)', r'(?i)^(Neutral|Neither dissatisfied nor satisfied)', r'(?i)^(Dissatisfied)', r'(?i)^(Very dissatisfied)'],
         [r'(?i)^(Extremely confident)', r'(?i)^(Very confident)', r'(?i)^(Moderately confident)',r'(?i)^(Slightly confident)', r'(?i)^(Not at all confident)'],
         [r'(?i)^(Extremely important)', r'(?i)^(Somewhat important)', r'(?i)^(Moderately important)', r'(?i)^(A little important)', r'(?i)^(Not at all important)'],
         [r'(?i)^(Very prepared)', r'(?i)^(Somewhat prepared)', r'(?i)^(Moderately prepared)', r'(?i)^(Slightly prepared)'],
@@ -75,8 +75,8 @@ def order_and_score_values(df: pd.DataFrame, bar_cats: list[tuple[str, str]]) ->
     # fix alpha ordering of order groups
     df.replace(original_vals, new_vals, inplace=True, regex=True)
 
-    # prefer not to say answers should be treated as no answer (NaN)
-    df.replace([r'(?i).*prefer not to say.*'], [np.NaN], inplace=True, regex=True)
+    # prefer not to say AND does not apply to me answers should be treated as no answer (NaN)
+    df.replace([r'(?i).*prefer not to say.*', r'(?i).*does not apply to me.*'], [np.NaN], inplace=True, regex=True)
 
 # gets the dataframe from a file
 def get_dataframe(inputFile: str):
@@ -222,14 +222,6 @@ def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], pdf: PdfP
             score_comps = []
             split_name = name.split('+')
 
-            # institute score comp
-            if len(split_name) == 1 and name != "All" and f"All-{cat}" in prev_scores:
-                score_comps.append(("Institute", prev_scores[f"All-{cat}"]))
-            
-            # gender/ethnicty score comp
-            if len(split_name) > 1 and split_name[0] != "All" and f"All+{split_name[1]}-{cat}" in prev_scores:
-                score_comps.append((split_name[1], prev_scores[f"All+{split_name[1]}-{cat}"]))
-
             # parent depts score comps
             if split_name[0] in parents:
                 for parent in parents[split_name[0]]:
@@ -239,6 +231,14 @@ def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], pdf: PdfP
                     # parent gender/ethnicty comp
                     if len(split_name) > 1 and f"{parent}+{split_name[1]}-{cat}" in prev_scores:
                         score_comps.append((f"{parent}/{split_name[1]}", prev_scores[f"{parent}+{split_name[1]}-{cat}"]))
+
+            # institute score comp
+            if len(split_name) == 1 and name != "All" and f"All-{cat}" in prev_scores:
+                score_comps.append(("Institute", prev_scores[f"All-{cat}"]))
+            
+            # gender/ethnicty score comp
+            if len(split_name) > 1 and split_name[0] != "All" and f"All+{split_name[1]}-{cat}" in prev_scores:
+                score_comps.append((split_name[1], prev_scores[f"All+{split_name[1]}-{cat}"]))
 
             if len(score_comps) > 0:
                 score_str = "\n".join([f"{comp[0]} Score: {comp[1]:.2}" for comp in score_comps])
