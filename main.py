@@ -138,8 +138,9 @@ def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> 
             for specific_category in specific_categories:
                 # multi select
                 if specific_category == 'Q3:Ethnicity/Race (Check all that apply) - Selected Choice':
-                    values = np.unique(base_entry_df[specific_category].dropna().apply(lambda x: x.split(',')).sum())
-                    unique_specific_entries = {val:base_entry_df.loc[base_entry_df[specific_category].str.contains(val, na=False, regex=False)] for val in values}
+                    split_df = base_entry_df[specific_category].apply(lambda x: x.split(',') if not pd.isna(x) else [])
+                    values = np.unique(split_df.sum())
+                    unique_specific_entries = {val:base_entry_df.loc[split_df.apply(lambda x: val in x)] for val in values}
                 # not multi select
                 else:
                     unique_specific_entries = dict(tuple(base_entry_df.groupby(specific_category)))
