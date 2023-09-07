@@ -48,9 +48,9 @@ def order_and_score_values(df: pd.DataFrame, bar_cats: list[tuple[str, str]]) ->
         [r'(?i)^(Very likely)', r'(?i)^(Likely)', r'(?i)^(Somewhat likely)',r'(?i)^(Somewhat unlikely)', r'(?i)^(Unlikely)', r'(?i)^(Very unlikely)'],
         [r'(?i)^(Very satisfied)', r'(?i)^(Satisfied)', r'(?i)^(Neutral|Neither dissatisfied nor satisfied)', r'(?i)^(Dissatisfied)', r'(?i)^(Very dissatisfied)'],
         [r'(?i)^(Extremely confident)', r'(?i)^(Very confident)', r'(?i)^(Moderately confident)',r'(?i)^(Slightly confident)', r'(?i)^(Not at all confident)'],
-        [r'(?i)^(Extremely important)', r'(?i)^(Somewhat important)', r'(?i)^(Moderately important)', r'(?i)^(A little important)', r'(?i)^(Not at all important)'],
-        [r'(?i)^(Very prepared)', r'(?i)^(Somewhat prepared)', r'(?i)^(Moderately prepared)', r'(?i)^(Slightly prepared)'],
-        [r'(?i)^(Yes, I have all the.*)', r'(?i)^(Somewhat)\s*$', r'(?i)^(Moderately)\s*$', r'(?i)^(A little)\s*$', r'(?i)^(Not at all)\s*$']
+        [r'(?i)^(Extremely important)', r'(?i)^(Moderately important)', r'(?i)^(Somewhat important)', r'(?i)^(A little important)', r'(?i)^(Not at all important)'],
+        [r'(?i)^(Very prepared)', r'(?i)^(Moderately prepared)', r'(?i)^(Somewhat prepared)', r'(?i)^(Slightly prepared)'],
+        [r'(?i)^(Yes, I have all the.*)', r'(?i)^(Moderately)\s*$', r'(?i)^(Somewhat)\s*$', r'(?i)^(A little)\s*$', r'(?i)^(Not at all)\s*$']
     ]
 
     original_vals = list(chain.from_iterable(ordered_groups))
