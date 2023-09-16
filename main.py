@@ -148,6 +148,9 @@ def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> 
                 current_dfs = {}
                 generate = True
 
+                if base_entry == "SECURITY & CAMPUS SVCS":
+                    print(unique_specific_entries.keys())
+
                 # loops through values for this specific category
                 for specific_entry, new_df in unique_specific_entries.items():
                     # checks if size is too small for anonymity
@@ -169,27 +172,24 @@ def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> 
 # gets a list of categories which should generate a bar chart, with shortened names
 def get_bar_cats(df: pd.DataFrame) -> list[tuple[str, str]]:
     return [
-        (cat.split(":")[0], cat) for cat in df if cat.startswith("Q") and cat[1].isdigit() and "TEXT" not in cat
+        (cat.split(":")[0], cat) for cat in df if cat.startswith("Q") and cat[1].isdigit() and "TEXT" not in cat and (df[cat].value_counts().count() < 15 or "Check all that apply" in cat)
     ]
 
 # gets a list of categories which should generate a list of text responses
 def get_text_cats(df: pd.DataFrame) -> list[str]:
     return [
-        cat for cat in df if "TEXT" in cat or "Q31" in cat
+                                              # "bar" cats that should become text cats
+        cat for cat in df if "TEXT" in cat or (cat.startswith("Q") and cat[1].isdigit() and "TEXT" not in cat and df[cat].value_counts().count() >= 15 and "Check all that apply" not in cat)
     ]
 
 # plots bar charts from the dataframe based on the categories passed in
-def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], pdf: PdfPages, name: str):
+def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], text_cats: list[str], pdf: PdfPages, name: str):
     # first page
     i = 0
     fig, axes = plt.subplots(3, 1, figsize=(8.5, 11))
 
     for (cat_name, cat) in bar_cats:
         try:
-            # exclude Q31 (more of a freetext)
-            if cat_name == "Q31":
-                continue
-
             # one choice vs multi select
             if not "Check all that apply" in cat:
                 # goal is to create a dataframe with values and frequency, we want this sorted by alpha order (sort_index)
@@ -308,7 +308,7 @@ def plot_text_cats(df: pd.DataFrame, text_cats: list[str], pdf: PdfPages):
 # generates a pdf report for the dataframe and the appropriate categories
 def generate_pdf(df: pd.DataFrame, bar_cats: list[tuple[str, str]], text_cats: list[str], name: str):
     with PdfPages(f"out/{name}.pdf") as pdf:
-        plot_bar_charts(df, bar_cats, pdf, name)
+        plot_bar_charts(df, bar_cats, text_cats, pdf, name)
         plot_text_cats(df, text_cats, pdf)
 
 # entrypoint
@@ -335,6 +335,9 @@ if __name__ == '__main__':
     total = len(dfs_to_process.items())
 
     full_start = time.time()
+
+    print(input_filename)
+    print(dfs_to_process.keys())
 
     for name, df in dfs_to_process.items():
         sys.stdout.write(f"\rCompleted {completed}/{total} Reports. Working on {name} report.".ljust(100))
