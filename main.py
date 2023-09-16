@@ -172,14 +172,14 @@ def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> 
 # gets a list of categories which should generate a bar chart, with shortened names
 def get_bar_cats(df: pd.DataFrame) -> list[tuple[str, str]]:
     return [
-        (cat.split(":")[0], cat) for cat in df if cat.startswith("Q") and cat[1].isdigit() and "TEXT" not in cat and (df[cat].value_counts().count() < 15 or "Check all that apply" in cat)
+        (cat.split(":")[0], cat) for cat in df if cat.startswith("Q") and cat[1].isdigit() and "TEXT" not in cat and (df[cat].value_counts().count() < 15 or "Check all that apply" in cat) and "Q31" not in cat
     ]
 
 # gets a list of categories which should generate a list of text responses
 def get_text_cats(df: pd.DataFrame) -> list[str]:
     return [
                                               # "bar" cats that should become text cats
-        cat for cat in df if "TEXT" in cat or (cat.startswith("Q") and cat[1].isdigit() and "TEXT" not in cat and df[cat].value_counts().count() >= 15 and "Check all that apply" not in cat)
+        cat for cat in df if "TEXT" in cat or (cat.startswith("Q") and cat[1].isdigit() and "TEXT" not in cat and df[cat].value_counts().count() >= 15 and "Check all that apply" not in cat) or "Q31" in cat
     ]
 
 # plots bar charts from the dataframe based on the categories passed in
