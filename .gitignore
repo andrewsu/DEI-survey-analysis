@@ -1,3 +1,4 @@
 out/*
 !out/placeholder.txt
 *-scrambled.xlsx
+__pycache__
