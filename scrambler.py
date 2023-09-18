@@ -12,7 +12,7 @@ def scramble(input_filename: str, output_filename: str):
         col = input_df.columns[i]
         input_df[col] = input_df[col].sample(frac=1).values
 
-    input_df.to_excel(output_filename, sheet_name="Data")
+    input_df.to_excel(output_filename, sheet_name="Data", index=False)
 
 # entrypoint
 if __name__ == '__main__':
