@@ -285,30 +285,31 @@ def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], text_cats
 # "plots" freetext response from dataframe and categories given (just puts each question on a page in the the pdf)
 def plot_text_cats(df: pd.DataFrame, text_cats: list[str], pdf: PdfPages):
     for cat in text_cats:
-        fig, axes = plt.subplots(1, 1, figsize=(8.5, 11))
-        axes.axis('off')
-
         answers_df = df[cat].value_counts().to_frame().transpose()
         if answers_df.empty:
             continue
 
-        # to each answer => wrap at 60 characters, cutoff at 180 characters, add count at the end [cut off to 10 answers]
+        # to each answer => wrap at 100 characters
         shortened_answer_list = [
-            "\n".join(wrap(i, 60))[:180] + ("..." if len(i) > 180 else "") + f" ({answers_df[i]['count']})" for i in answers_df
-        ][:10]
+            "\n".join(wrap(i, 100)) + f" ({answers_df[i]['count']})" for i in answers_df
+        ]
 
-        axes.set_title(cat, wrap=True)
-        axes.text(
-            0, 
-            .95, 
-            "\n\n".join(shortened_answer_list) + ("\n\n..." if answers_df.shape[1] > 10 else ""), 
-            fontsize=8,
-            transform=axes.transAxes,
-            verticalalignment='top'
-        )
+        # 12 answers / page
+        for i in range((len(shortened_answer_list) // 12)):
+            fig, axes = plt.subplots(1, 1, figsize=(8.5, 11))
+            axes.axis('off')
+            axes.set_title(cat + f" (Page {i+1})", wrap=True)
+            axes.text(
+                0, 
+                .95, 
+                "\n\n".join(shortened_answer_list[(12*i):(12*(i+1))]), 
+                fontsize=8,
+                transform=axes.transAxes,
+                verticalalignment='top'
+            )
 
-        pdf.savefig()
-        plt.close(fig)
+            pdf.savefig()
+            plt.close(fig)
 
 # generates a pdf report for the dataframe and the appropriate categories
 def generate_pdf(df: pd.DataFrame, bar_cats: list[tuple[str, str]], text_cats: list[str], name: str):
