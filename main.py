@@ -125,6 +125,19 @@ def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> 
             if base_entry_df.shape[0] < 5:
                 continue
 
+            if base_entry == 'supervisor a' or base_entry == 'supervisor b':
+                print(base_entry)
+                print(base_entry_df['Department/Org Level 1'].value_counts().index[0])
+                print(base_entry_df['Department/Org Level 1'].value_counts().shape[0])
+                print(input_df[input_df['Department/Org Level 1'] == base_entry_df['Department/Org Level 1'].value_counts().index[0]]['Supervisor for Reporting'].value_counts(dropna=False).shape)
+
+            # checks if supervisor only has one department
+            if base_category == 'Supervisor for Reporting' and base_entry_df['Department/Org Level 1'].value_counts(dropna=False).shape[0] == 1:
+                dept_value = base_entry_df['Department/Org Level 1'].value_counts().index[0]
+                # checks if department only has one supervisor
+                if input_df[input_df['Department/Org Level 1'] == dept_value]['Supervisor for Reporting'].value_counts(dropna=False).shape[0] == 1:
+                    continue
+
             # add parents
             if base_category in parent_categories:
                 for parent_category in parent_categories[base_category]:
@@ -147,9 +160,6 @@ def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> 
 
                 current_dfs = {}
                 generate = True
-
-                if base_entry == "SECURITY & CAMPUS SVCS":
-                    print(unique_specific_entries.keys())
 
                 # loops through values for this specific category
                 for specific_entry, new_df in unique_specific_entries.items():
@@ -335,9 +345,6 @@ if __name__ == '__main__':
     total = len(dfs_to_process.items())
 
     full_start = time.time()
-
-    print(input_filename)
-    print(dfs_to_process.keys())
 
     for name, df in dfs_to_process.items():
         sys.stdout.write(f"\rCompleted {completed}/{total} Reports. Working on {name} report.".ljust(100))
