@@ -125,12 +125,6 @@ def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> 
             if base_entry_df.shape[0] < 5:
                 continue
 
-            if base_entry == 'supervisor a' or base_entry == 'supervisor b':
-                print(base_entry)
-                print(base_entry_df['Department/Org Level 1'].value_counts().index[0])
-                print(base_entry_df['Department/Org Level 1'].value_counts().shape[0])
-                print(input_df[input_df['Department/Org Level 1'] == base_entry_df['Department/Org Level 1'].value_counts().index[0]]['Supervisor for Reporting'].value_counts(dropna=False).shape)
-
             # checks if supervisor only has one department
             if base_category == 'Supervisor for Reporting' and base_entry_df['Department/Org Level 1'].value_counts(dropna=False).shape[0] == 1:
                 dept_value = base_entry_df['Department/Org Level 1'].value_counts().index[0]
@@ -260,7 +254,8 @@ def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], text_cats
             axes[i].set_title("\n".join(wrap(cat + f" [Responses: {total}]", 50)), wrap=True, ha="left", x=-0)
 
             # put score on fig, add bkg with bbox=dict(facecolor='red', alpha=0.5)
-            axes[i].text(1, 1, f"Report Score (-{max_scores[cat]} to {max_scores[cat]}): {score:.2}\n{score_str}", verticalalignment='bottom', horizontalalignment='right', transform=axes[i].transAxes)
+            if not np.isnan(score):
+                axes[i].text(1, 1, f"Report Score (-{max_scores[cat]} to {max_scores[cat]}): {score:.2}\n{score_str}", verticalalignment='bottom', horizontalalignment='right', transform=axes[i].transAxes)
 
             i += 1
 
