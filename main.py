@@ -183,7 +183,7 @@ def get_bar_cats(df: pd.DataFrame) -> list[tuple[str, str]]:
 def get_text_cats(df: pd.DataFrame) -> list[str]:
     return [
                                               # "bar" cats that should become text cats
-        cat for cat in df if "TEXT" in cat or (cat.startswith("Q") and cat[1].isdigit() and "TEXT" not in cat and df[cat].value_counts().count() >= 15 and "Check all that apply" not in cat) or "Q31" in cat
+        cat for cat in df if "TEXT" in cat or (cat.startswith("Q") and cat[1].isdigit() and "TEXT" not in cat and df[cat].value_counts().count() >= 15 and "Check all that apply" not in cat)
     ]
 
 # plots bar charts from the dataframe based on the categories passed in
