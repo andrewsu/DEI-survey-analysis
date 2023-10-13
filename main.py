@@ -90,6 +90,9 @@ def get_dataframe(inputFile: str):
     # Drop rows with all empty cells
     input_df.dropna(axis=0, how='all', inplace=True)
 
+    # Drop rows without consent
+    input_df = input_df[input_df['Q0:Do you consent to taking this survey?'] == 'Yes']
+
     return input_df
 
 # returns a dict of dataframes for which a report should be produced, indexed by the name of that group of data
