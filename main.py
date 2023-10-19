@@ -96,7 +96,7 @@ def get_dataframe(inputFile: str):
     return input_df
 
 # returns a dict of dataframes for which a report should be produced, indexed by the name of that group of data
-def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> dict[str, pd.DataFrame]:
+def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> dict[str, dict[str, pd.DataFrame]]:
     output_dfs = {}
 
     # Replacement (useful for sorting)/Value scoring
@@ -143,7 +143,7 @@ def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> 
                             parents[base_entry] = []
                         parents[base_entry].append(base_entry_df[parent_category].value_counts().index[0])
 
-            output_dfs[base_entry] = base_entry_df
+            output_dfs[base_entry] = {base_entry: base_entry_df}
 
             for specific_category in specific_categories:
                 # multi select
@@ -172,7 +172,7 @@ def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> 
                     current_dfs[f"{base_entry}+{specific_entry}"] = new_df
                 
                 if generate:
-                    output_dfs.update(current_dfs)
+                    output_dfs[base_entry].update(current_dfs)
 
     return output_dfs
 
@@ -190,7 +190,7 @@ def get_text_cats(df: pd.DataFrame) -> list[str]:
     ]
 
 # plots bar charts from the dataframe based on the categories passed in
-def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], text_cats: list[str], pdf: PdfPages, name: str):
+def plot_bar_charts(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str, str]], text_cats: list[str], pdf: PdfPages, name: str):
     # first page
     i = 0
     fig, axes = plt.subplots(3, 1, figsize=(8.5, 11))
@@ -199,27 +199,35 @@ def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], text_cats
         try:
             # one choice vs multi select
             if not "Check all that apply" in cat:
-                # goal is to create a dataframe with values and frequency, we want this sorted by alpha order (sort_index)
-                plottable_df = df[cat].value_counts().sort_index().rename(cat_name).to_frame().transpose()
-                
-                plottable_df.plot.barh(stacked=True, ax=axes[i])
-                total = df[cat].dropna().shape[0]
+                plottable_dict = {val: [] for val, _ in df_group[name][cat].value_counts().items()}
+                for _, df in df_group.items():
+                    # goal is to create a dataframe with values and frequency, we want this sorted by alpha order (sort_index)
+                    values = df[cat].value_counts()
+                    total = df[cat].shape[0]
+                    for val in plottable_dict.keys():
+                        if val in values.keys():
+                            plottable_dict[val].append(values[val]/total)
+                        else:
+                            plottable_dict[val].append(0)
+                        
+                pd.DataFrame(plottable_dict, index=list(df_group.keys())).plot.barh(stacked=True, ax=axes[i])
             else:
-                # multi select values are split by ","
-                values_df = df[cat].apply(lambda x: x.split(',') if not pd.isna(x) else ["No Answer"])
-                values = np.unique(values_df.sum())
-                # we want to sort the values by alpha order
-                values.sort()
+                pass
+                # for df_name, df in df_group.items():
+                #     # multi select values are split by ","
+                #     values_df = df[cat].apply(lambda x: x.split(',') if not pd.isna(x) else ["No Answer"])
+                #     values = np.unique(values_df.sum())
+                #     # we want to sort the values by alpha order
+                #     values.sort()
 
-                plottable_df = pd.DataFrame({val:np.sum([val in x for x in values_df]) for val in values}, index=[cat_name])
+                #     plottable_df = pd.DataFrame({val:np.sum([val in x for x in values_df]) for val in values}, index=[cat_name])
 
-                plottable_df.plot.barh(ax=axes[i])
-                total = df[cat].shape[0]
+                #     plottable_df.plot.barh(ax=axes[i])
 
             # cut off lables on the legend
             max_legend_label_length = 30
             handles, labels = axes[i].get_legend_handles_labels()
-            shortened_labels = [(label[:max_legend_label_length] + '...' if len(label) > max_legend_label_length else label) + ' ({:} / {:.1%})'.format(plottable_df[label][cat_name], plottable_df[label][cat_name]/total) for label in labels]
+            shortened_labels = [(label[:max_legend_label_length] + '...' if len(label) > max_legend_label_length else label) for label in labels]
 
             # get the score (scores are negative better, so flip)
             score = -df[f"scores-{cat}"].mean()
@@ -315,10 +323,10 @@ def plot_text_cats(df: pd.DataFrame, text_cats: list[str], pdf: PdfPages):
             plt.close(fig)
 
 # generates a pdf report for the dataframe and the appropriate categories
-def generate_pdf(df: pd.DataFrame, bar_cats: list[tuple[str, str]], text_cats: list[str], name: str):
+def generate_pdf(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str, str]], text_cats: list[str], name: str):
     with PdfPages(f"out/{name}.pdf") as pdf:
-        plot_bar_charts(df, bar_cats, text_cats, pdf, name)
-        plot_text_cats(df, text_cats, pdf)
+        plot_bar_charts(df_group, bar_cats, text_cats, pdf, name)
+        # plot_text_cats(df, text_cats, pdf)
 
 # entrypoint
 if __name__ == '__main__':
@@ -338,19 +346,19 @@ if __name__ == '__main__':
     bar_cats = get_bar_cats(main_df)
     text_cats = get_text_cats(main_df)
 
-    dfs_to_process = get_data_groups(main_df, bar_cats)
+    df_groups_to_process = get_data_groups(main_df, bar_cats)
 
     completed = 0
-    total = len(dfs_to_process.items())
+    total = len(df_groups_to_process.items())
 
     full_start = time.time()
 
-    for name, df in dfs_to_process.items():
+    for name, df_group in df_groups_to_process.items():
         sys.stdout.write(f"\rCompleted {completed}/{total} Reports. Working on {name} report.".ljust(100))
         logger.log_data(f"[{name}]")
         start = time.time()
 
-        generate_pdf(df, bar_cats, text_cats, name)
+        generate_pdf(df_group, bar_cats, text_cats, name)
 
         # make sure everything is cleared from last plot
         plt.close('all')
