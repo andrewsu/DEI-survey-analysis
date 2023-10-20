@@ -199,7 +199,7 @@ def plot_bar_charts(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str,
         try:
             # one choice vs multi select
             if not "Check all that apply" in cat:
-                plottable_dict = {val: [] for val, _ in df_group[name][cat].value_counts().items()}
+                plottable_dict = {val: [] for val, _ in df_group[name][cat].value_counts().sort_index(ascending=True).items()}
                 for _, df in df_group.items():
                     # goal is to create a dataframe with values and frequency, we want this sorted by alpha order (sort_index)
                     values = df[cat].value_counts()
@@ -228,7 +228,7 @@ def plot_bar_charts(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str,
             max_legend_label_length = 30
             handles, labels = axes[i].get_legend_handles_labels()
             shortened_labels = [(label[:max_legend_label_length] + '...' if len(label) > max_legend_label_length else label) for label in labels]
-            
+
             axes[i].legend(handles, shortened_labels, bbox_to_anchor=(1.0, -0.25), ncol=2)
             axes[i].set_title("\n".join(wrap(cat, 50)), wrap=True, ha="left", x=-0)
 
