@@ -210,7 +210,7 @@ def plot_bar_charts(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str,
                         else:
                             plottable_dict[val].append(0)
                         
-                pd.DataFrame(plottable_dict, index=list(df_group.keys())).plot.barh(stacked=True, ax=axes[i])
+                pd.DataFrame(plottable_dict, index=[f"{k.split('+')[1] if '+' in k else k} (n={df_group[k][cat].dropna().shape[0]}, score={-df_group[k][f'scores-{cat}'].mean():.2})" for k in df_group.keys()]).plot.barh(stacked=True, ax=axes[i])
             else:
                 pass
                 # for df_name, df in df_group.items():
@@ -228,45 +228,9 @@ def plot_bar_charts(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str,
             max_legend_label_length = 30
             handles, labels = axes[i].get_legend_handles_labels()
             shortened_labels = [(label[:max_legend_label_length] + '...' if len(label) > max_legend_label_length else label) for label in labels]
-
-            # get the score (scores are negative better, so flip)
-            score = -df[f"scores-{cat}"].mean()
-            if not np.isnan(score):
-                prev_scores[f"{name}-{cat}"] = score
-
-            # add score comparisons
-            score_comps = []
-            split_name = name.split('+')
-
-            # parent depts score comps
-            if split_name[0] in parents:
-                for parent in parents[split_name[0]]:
-                    if len(split_name) == 1 and f"{parent}-{cat}" in prev_scores:
-                        score_comps.append((parent, prev_scores[f"{parent}-{cat}"]))
-                    
-                    # parent gender/ethnicty comp
-                    if len(split_name) > 1 and f"{parent}+{split_name[1]}-{cat}" in prev_scores:
-                        score_comps.append((f"{parent}/{split_name[1]}", prev_scores[f"{parent}+{split_name[1]}-{cat}"]))
-
-            # institute score comp
-            if len(split_name) == 1 and name != "All" and f"All-{cat}" in prev_scores:
-                score_comps.append(("Institute", prev_scores[f"All-{cat}"]))
             
-            # gender/ethnicty score comp
-            if len(split_name) > 1 and split_name[0] != "All" and f"All+{split_name[1]}-{cat}" in prev_scores:
-                score_comps.append((split_name[1], prev_scores[f"All+{split_name[1]}-{cat}"]))
-
-            if len(score_comps) > 0:
-                score_str = "\n".join([f"{comp[0]} Score: {comp[1]:.2}" for comp in score_comps])
-            else:
-                score_str = ""
-
             axes[i].legend(handles, shortened_labels, bbox_to_anchor=(1.0, -0.25), ncol=2)
-            axes[i].set_title("\n".join(wrap(cat + f" [Responses: {total}]", 50)), wrap=True, ha="left", x=-0)
-
-            # put score on fig, add bkg with bbox=dict(facecolor='red', alpha=0.5)
-            if not np.isnan(score):
-                axes[i].text(1, 1, f"Report Score (-{max_scores[cat]} to {max_scores[cat]}): {score:.2}\n{score_str}", verticalalignment='bottom', horizontalalignment='right', transform=axes[i].transAxes)
+            axes[i].set_title("\n".join(wrap(cat, 50)), wrap=True, ha="left", x=-0)
 
             i += 1
 
