@@ -203,7 +203,7 @@ def plot_bar_charts(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str,
                 for _, df in df_group.items():
                     # goal is to create a dataframe with values and frequency, we want this sorted by alpha order (sort_index)
                     values = df[cat].value_counts()
-                    total = df[cat].shape[0]
+                    total = df[cat].dropna().shape[0]
                     for val in plottable_dict.keys():
                         if val in values.keys():
                             plottable_dict[val].append(values[val]/total)
