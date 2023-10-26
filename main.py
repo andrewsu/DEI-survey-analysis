@@ -212,17 +212,7 @@ def plot_bar_charts(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str,
                         
                 pd.DataFrame(plottable_dict, index=[f"{k.split('+')[1] if '+' in k else k} (n={df_group[k][cat].dropna().shape[0]}, score={-df_group[k][f'scores-{cat}'].mean():.2})" for k in df_group.keys()]).plot.barh(stacked=True, ax=axes[i])
             else:
-                pass
-                # for df_name, df in df_group.items():
-                #     # multi select values are split by ","
-                #     values_df = df[cat].apply(lambda x: x.split(',') if not pd.isna(x) else ["No Answer"])
-                #     values = np.unique(values_df.sum())
-                #     # we want to sort the values by alpha order
-                #     values.sort()
-
-                #     plottable_df = pd.DataFrame({val:np.sum([val in x for x in values_df]) for val in values}, index=[cat_name])
-
-                #     plottable_df.plot.barh(ax=axes[i])
+                continue
 
             # cut off lables on the legend
             max_legend_label_length = 30
@@ -254,6 +244,55 @@ def plot_bar_charts(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str,
     if i % 3 != 0:
         fig.tight_layout()
         pdf.savefig()
+
+    fig, axes = plt.subplots(1, 1, figsize=(8.5, 11))
+    # multi select cats need their own page each
+    for (cat_name, cat) in bar_cats:
+        try:
+            if not "Check all that apply" in cat:
+                continue
+
+            # for "root" dataframe
+            root_values_df = df_group[name][cat].apply(lambda x: x.split(',') if not pd.isna(x) else ["No Answer"])
+            root_values = np.unique(root_values_df.sum())
+            # we want to sort the values by alpha order
+            root_values.sort()
+
+            plottable_dict = {val: [] for val in root_values}
+            for _, df in df_group.items():
+                # multi select values are split by ","                  #     values_df = df[cat].apply(lambda x: x.split(',') if not pd.isna(x) else ["No Answer"])
+                values_df = df[cat].apply(lambda x: x.split(',') if not pd.isna(x) else ["No Answer"])
+                values = np.unique(values_df.sum())
+                # we want to sort the values by alpha order
+                values.sort()
+
+                for val in plottable_dict.keys():
+                    plottable_dict[val].append(np.sum([val in x for x in values_df]))
+                    
+            pd.DataFrame(plottable_dict, index=[f"{k.split('+')[1] if '+' in k else k} (n={df_group[k][cat].dropna().shape[0]})" for k in df_group.keys()]).plot.barh(ax=axes)
+
+            # cut off lables on the legend
+            max_legend_label_length = 30
+            handles, labels = axes.get_legend_handles_labels()
+            shortened_labels = [(label[:max_legend_label_length] + '...' if len(label) > max_legend_label_length else label) for label in labels]
+
+            axes.legend(handles, shortened_labels, bbox_to_anchor=(1.0, -0.25), ncol=2)
+            axes.set_title("\n".join(wrap(cat, 50)), wrap=True, ha="left", x=-0)
+
+            # save old page, create a new page
+            fig.tight_layout()
+            pdf.savefig()
+            plt.close(fig)
+            fig, axes = plt.subplots(1, 1, figsize=(8.5, 11))
+
+        # occurs when no data to plot
+        except TypeError as e:
+            if str(e) == "no numeric data to plot":
+                modified_cat = cat.replace('\r\n', ' ').replace('\n', ' ')
+                logger.log_data(f"The question had no responses (for this report): \"{modified_cat}\"")
+            else:
+                raise e
+    
     
     plt.close(fig)
 
