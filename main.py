@@ -329,7 +329,7 @@ def plot_text_cats(df: pd.DataFrame, text_cats: list[str], pdf: PdfPages):
 def generate_pdf(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str, str]], text_cats: list[str], name: str):
     with PdfPages(f"out/{name}.pdf") as pdf:
         plot_bar_charts(df_group, bar_cats, text_cats, pdf, name)
-        # plot_text_cats(df, text_cats, pdf)
+        plot_text_cats(df_group[name], text_cats, pdf)
 
 # entrypoint
 if __name__ == '__main__':
