@@ -21,6 +21,8 @@ prev_scores = {}
 parents = {}
 # dict to score max absolute scores for each category(question)
 max_scores = {}
+# stores all the necessary data frames
+df_groups = {}
 
 # generates a negative or positive score based on an index and length
 # Example with length=5 (odd): 0 -> -2, 1 -> -1, 2 -> 0, 3 -> 1, 4 -> 2
@@ -136,11 +138,14 @@ def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> 
                     continue
 
             # add parents
+            if base_entry != 'All':
+                parents[base_entry] = ['All']
+            else:
+                parents[base_entry] = []
+
             if base_category in parent_categories:
                 for parent_category in parent_categories[base_category]:
                     if base_entry_df[parent_category].value_counts().shape[0] == 1:
-                        if not base_entry in parents:
-                            parents[base_entry] = []
                         parents[base_entry].append(base_entry_df[parent_category].value_counts().index[0])
 
             output_dfs[base_entry] = {base_entry: base_entry_df}
@@ -190,7 +195,7 @@ def get_text_cats(df: pd.DataFrame) -> list[str]:
     ]
 
 # plots bar charts from the dataframe based on the categories passed in
-def plot_bar_charts(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str, str]], text_cats: list[str], pdf: PdfPages, name: str):
+def plot_bar_charts(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str, str]], pdf: PdfPages, name: str):
     # first page
     i = 0
     fig, axes = plt.subplots(3, 1, figsize=(8.5, 11))
@@ -199,8 +204,11 @@ def plot_bar_charts(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str,
         try:
             # one choice vs multi select
             if not "Check all that apply" in cat:
-                plottable_dict = {val: [] for val, _ in df_group[name][cat].value_counts().sort_index(ascending=True).items()}
-                for _, df in df_group.items():
+                plottable_dict = {val: [] for val, _ in df_groups['All']['All'][cat].value_counts().sort_index(ascending=True).items()}
+                index = []
+
+                # add demographic dataframes
+                for spec_name, df in df_group.items():
                     # goal is to create a dataframe with values and frequency, we want this sorted by alpha order (sort_index)
                     values = df[cat].value_counts()
                     total = df[cat].dropna().shape[0]
@@ -210,7 +218,26 @@ def plot_bar_charts(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str,
                         else:
                             plottable_dict[val].append(0)
                         
-                pd.DataFrame(plottable_dict, index=[f"{k.split('+')[1] if '+' in k else k} (n={df_group[k][cat].dropna().shape[0]}, score={-df_group[k][f'scores-{cat}'].mean():.2})" for k in df_group.keys()]).plot.barh(stacked=True, ax=axes[i])
+                    index.append(f"{spec_name.split('+')[1] if '+' in spec_name else spec_name} (n={df[cat].dropna().shape[0]}, score={-df[f'scores-{cat}'].mean():.2})")
+
+                # add parent dataframes
+                for spec_name, _ in df_group.items():
+                    for parent in parents[name]:
+                        new_name = parent + ('+' + spec_name.split('+')[1] if len(spec_name.split('+')) > 1 else '')
+                        if new_name in df_groups[parent]:
+                            df = df_groups[parent][new_name]
+                            # same code as from previous for loop
+                            values = df[cat].value_counts()
+                            total = df[cat].dropna().shape[0]
+                            for val in plottable_dict.keys():
+                                if val in values.keys():
+                                    plottable_dict[val].append(values[val]/total)
+                                else:
+                                    plottable_dict[val].append(0)
+
+                            index.append(f"{new_name.replace('All', 'Institute')} (n={df[cat].dropna().shape[0]}, score={-df[f'scores-{cat}'].mean():.2})")
+
+                pd.DataFrame(plottable_dict, index=index).plot.barh(stacked=True, ax=axes[i])
             else:
                 continue
 
@@ -328,7 +355,7 @@ def plot_text_cats(df: pd.DataFrame, text_cats: list[str], pdf: PdfPages):
 # generates a pdf report for the dataframe and the appropriate categories
 def generate_pdf(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str, str]], text_cats: list[str], name: str):
     with PdfPages(f"out/{name}.pdf") as pdf:
-        plot_bar_charts(df_group, bar_cats, text_cats, pdf, name)
+        plot_bar_charts(df_group, bar_cats, pdf, name)
         plot_text_cats(df_group[name], text_cats, pdf)
 
 # entrypoint
@@ -355,6 +382,9 @@ if __name__ == '__main__':
     total = len(df_groups_to_process.items())
 
     full_start = time.time()
+
+    # global variable needed for parent processing
+    df_groups = df_groups_to_process
 
     for name, df_group in df_groups_to_process.items():
         sys.stdout.write(f"\rCompleted {completed}/{total} Reports. Working on {name} report.".ljust(100))
