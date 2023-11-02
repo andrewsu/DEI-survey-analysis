@@ -280,13 +280,15 @@ def plot_bar_charts(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str,
                 continue
 
             # for "root" dataframe
-            root_values_df = df_group[name][cat].apply(lambda x: x.split(',') if not pd.isna(x) else ["No Answer"])
+            root_values_df = df_groups['All']['All'][cat].apply(lambda x: x.split(',') if not pd.isna(x) else ["No Answer"])
             root_values = np.unique(root_values_df.sum())
             # we want to sort the values by alpha order
             root_values.sort()
 
+            index = []
+
             plottable_dict = {val: [] for val in root_values}
-            for _, df in df_group.items():
+            for spec_name, df in df_group.items():
                 # multi select values are split by ","                  #     values_df = df[cat].apply(lambda x: x.split(',') if not pd.isna(x) else ["No Answer"])
                 values_df = df[cat].apply(lambda x: x.split(',') if not pd.isna(x) else ["No Answer"])
                 values = np.unique(values_df.sum())
@@ -295,8 +297,28 @@ def plot_bar_charts(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str,
 
                 for val in plottable_dict.keys():
                     plottable_dict[val].append(np.sum([val in x for x in values_df]))
+
+                index.append(f"{spec_name.split('+')[1] if '+' in spec_name else spec_name} (n={df[cat].dropna().shape[0]})")
+
+            # parent comparisons
+            for spec_name, _ in df_group.items():
+                for parent in parents[name]:
+                    new_name = parent + ('+' + spec_name.split('+')[1] if len(spec_name.split('+')) > 1 else '')
+                    if new_name in df_groups[parent]:
+                        df = df_groups[parent][new_name]
+                        # same code from previous for loop
+                        values_df = df[cat].apply(lambda x: x.split(',') if not pd.isna(x) else ["No Answer"])
+                        values = np.unique(values_df.sum())
+                        # we want to sort the values by alpha order
+                        values.sort()
+
+                        for val in plottable_dict.keys():
+                            plottable_dict[val].append(np.sum([val in x for x in values_df]))
+                        
+                        index.append(f"{new_name.replace('All', 'Institute')} (n={df[cat].dropna().shape[0]})")
+
                     
-            pd.DataFrame(plottable_dict, index=[f"{k.split('+')[1] if '+' in k else k} (n={df_group[k][cat].dropna().shape[0]})" for k in df_group.keys()]).plot.barh(ax=axes)
+            pd.DataFrame(plottable_dict, index=index).plot.barh(ax=axes)
 
             # cut off lables on the legend
             max_legend_label_length = 30
