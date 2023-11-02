@@ -369,15 +369,50 @@ def plot_text_cats(df: pd.DataFrame, text_cats: list[str], pdf: PdfPages):
             "\n".join(wrap(i, 100)) + f" ({answers_df[i]['count']})" for i in answers_df
         ]
 
-        # 12 answers / page
-        for i in range((len(shortened_answer_list) // 12)):
+        MAX_WORDS_PER_PAGE = 850  # You can adjust this limit
+        current_words = 0
+        current_answers = []
+        page_number = 1
+
+        for ans in shortened_answer_list:
+            word_count = len(ans.split())
+
+            # If adding the current answer exceeds the limit, plot the current answers
+            if current_words + word_count > MAX_WORDS_PER_PAGE:
+                fig, axes = plt.subplots(1, 1, figsize=(8.5, 11))
+                axes.axis('off')
+                wrapped_title = "\n".join(wrap(cat, 30)) + f" (Page {page_number})"
+                axes.set_title(wrapped_title)
+                axes.text(
+                    0,
+                    .95,
+                    "\n\n".join(current_answers),
+                    fontsize=8,
+                    transform=axes.transAxes,
+                    verticalalignment='top'
+                )
+
+                pdf.savefig()
+                plt.close(fig)
+
+                # Reset counters and lists, and increase the page number
+                current_answers = [ans]
+                current_words = word_count
+                page_number += 1
+            else:
+                current_answers.append(ans)
+                current_words += word_count
+
+        # Plot any remaining answers that didn't get their own page
+        if current_answers:
             fig, axes = plt.subplots(1, 1, figsize=(8.5, 11))
             axes.axis('off')
-            axes.set_title(cat + f" (Page {i+1})", wrap=True)
+            wrapped_title = "\n".join(wrap(cat, 30)) + f" (Page {page_number})"
+            axes.set_title(wrapped_title)
             axes.text(
-                0, 
-                .95, 
-                "\n\n".join(shortened_answer_list[(12*i):(12*(i+1))]), 
+                0,
+                .95,
+                "\n\n".join(current_answers),
                 fontsize=8,
                 transform=axes.transAxes,
                 verticalalignment='top'
