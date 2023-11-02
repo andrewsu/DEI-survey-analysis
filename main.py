@@ -218,7 +218,13 @@ def plot_bar_charts(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str,
                         else:
                             plottable_dict[val].append(0)
                         
-                    index.append(f"{spec_name.split('+')[1] if '+' in spec_name else spec_name} (n={df[cat].dropna().shape[0]}, score={-df[f'scores-{cat}'].mean():.2})")
+#                    index.append(f"{spec_name.split('+')[1] if '+' in spec_name else spec_name} (n={df[cat].dropna().shape[0]}, score={-df[f'scores-{cat}'].mean():.2})")
+                    label = f"{spec_name.split('+')[1] if '+' in spec_name else spec_name} (n={df[cat].dropna().shape[0]}"
+                    meanscore=-df[f'scores-{cat}'].mean()
+                    if( not pd.isna(meanscore) ):
+                        label = label + f", score={meanscore:.2}"
+                    label = label + f")"
+                    index.append(label)
 
                 # add parent dataframes
                 for spec_name, _ in df_group.items():
@@ -235,7 +241,13 @@ def plot_bar_charts(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str,
                                 else:
                                     plottable_dict[val].append(0)
 
-                            index.append(f"{new_name.replace('All', 'Institute')} (n={df[cat].dropna().shape[0]}, score={-df[f'scores-{cat}'].mean():.2})")
+#                            index.append(f"{new_name.replace('All', 'Institute')} (n={df[cat].dropna().shape[0]}, score={-df[f'scores-{cat}'].mean():.2})")
+                            label = f"{new_name.replace('All', 'Institute')} (n={df[cat].dropna().shape[0]}"
+                            meanscore = -df[f'scores-{cat}'].mean()
+                            if( not pd.isna(meanscore) ):
+                                label = label + f", score={meanscore:.2}"
+                            label = label + f")"
+                            index.append(label)
 
                 pd.DataFrame(plottable_dict, index=index).plot.barh(stacked=True, ax=axes[i])
             else:
@@ -247,7 +259,7 @@ def plot_bar_charts(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str,
             shortened_labels = [(label[:max_legend_label_length] + '...' if len(label) > max_legend_label_length else label) for label in labels]
 
             axes[i].legend(handles, shortened_labels, bbox_to_anchor=(1.0, -0.25), ncol=2)
-            axes[i].set_title("\n".join(wrap(cat, 50)), wrap=True, ha="left", x=-0)
+            axes[i].set_title("\n".join(wrap(cat, 50)), wrap=True, ha="left", x=-0, fontsize=10)
 
             i += 1
 
