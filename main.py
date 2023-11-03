@@ -21,6 +21,8 @@ prev_scores = {}
 parents = {}
 # dict to score max absolute scores for each category(question)
 max_scores = {}
+# stores all the necessary data frames
+df_groups = {}
 
 # generates a negative or positive score based on an index and length
 # Example with length=5 (odd): 0 -> -2, 1 -> -1, 2 -> 0, 3 -> 1, 4 -> 2
@@ -96,7 +98,7 @@ def get_dataframe(inputFile: str):
     return input_df
 
 # returns a dict of dataframes for which a report should be produced, indexed by the name of that group of data
-def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> dict[str, pd.DataFrame]:
+def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> dict[str, dict[str, pd.DataFrame]]:
     output_dfs = {}
 
     # Replacement (useful for sorting)/Value scoring
@@ -136,14 +138,17 @@ def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> 
                     continue
 
             # add parents
+            if base_entry != 'All':
+                parents[base_entry] = ['All']
+            else:
+                parents[base_entry] = []
+
             if base_category in parent_categories:
                 for parent_category in parent_categories[base_category]:
                     if base_entry_df[parent_category].value_counts().shape[0] == 1:
-                        if not base_entry in parents:
-                            parents[base_entry] = []
                         parents[base_entry].append(base_entry_df[parent_category].value_counts().index[0])
 
-            output_dfs[base_entry] = base_entry_df
+            output_dfs[base_entry] = {base_entry: base_entry_df}
 
             for specific_category in specific_categories:
                 # multi select
@@ -172,7 +177,7 @@ def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> 
                     current_dfs[f"{base_entry}+{specific_entry}"] = new_df
                 
                 if generate:
-                    output_dfs.update(current_dfs)
+                    output_dfs[base_entry].update(current_dfs)
 
     return output_dfs
 
@@ -190,7 +195,7 @@ def get_text_cats(df: pd.DataFrame) -> list[str]:
     ]
 
 # plots bar charts from the dataframe based on the categories passed in
-def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], text_cats: list[str], pdf: PdfPages, name: str):
+def plot_bar_charts(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str, str]], pdf: PdfPages, name: str):
     # first page
     i = 0
     fig, axes = plt.subplots(3, 1, figsize=(8.5, 11))
@@ -199,66 +204,62 @@ def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], text_cats
         try:
             # one choice vs multi select
             if not "Check all that apply" in cat:
-                # goal is to create a dataframe with values and frequency, we want this sorted by alpha order (sort_index)
-                plottable_df = df[cat].value_counts().sort_index().rename(cat_name).to_frame().transpose()
-                
-                plottable_df.plot.barh(stacked=True, ax=axes[i])
-                total = df[cat].dropna().shape[0]
+                plottable_dict = {val: [] for val, _ in df_groups['All']['All'][cat].value_counts().sort_index(ascending=True).items()}
+                index = []
+
+                # add demographic dataframes
+                for spec_name, df in df_group.items():
+                    # goal is to create a dataframe with values and frequency, we want this sorted by alpha order (sort_index)
+                    values = df[cat].value_counts()
+                    total = df[cat].dropna().shape[0]
+                    for val in plottable_dict.keys():
+                        if val in values.keys():
+                            plottable_dict[val].append(values[val]/total)
+                        else:
+                            plottable_dict[val].append(0)
+                        
+#                    index.append(f"{spec_name.split('+')[1] if '+' in spec_name else spec_name} (n={df[cat].dropna().shape[0]}, score={-df[f'scores-{cat}'].mean():.2})")
+                    label = f"{spec_name.split('+')[1] if '+' in spec_name else spec_name} (n={df[cat].dropna().shape[0]}"
+                    meanscore=-df[f'scores-{cat}'].mean()
+                    if( not pd.isna(meanscore) ):
+                        label = label + f", score={meanscore:.2}"
+                    label = label + f")"
+                    index.append(label)
+
+                # add parent dataframes
+                for spec_name, _ in df_group.items():
+                    for parent in parents[name]:
+                        new_name = parent + ('+' + spec_name.split('+')[1] if len(spec_name.split('+')) > 1 else '')
+                        if new_name in df_groups[parent]:
+                            df = df_groups[parent][new_name]
+                            # same code as from previous for loop
+                            values = df[cat].value_counts()
+                            total = df[cat].dropna().shape[0]
+                            for val in plottable_dict.keys():
+                                if val in values.keys():
+                                    plottable_dict[val].append(values[val]/total)
+                                else:
+                                    plottable_dict[val].append(0)
+
+#                            index.append(f"{new_name.replace('All', 'Institute')} (n={df[cat].dropna().shape[0]}, score={-df[f'scores-{cat}'].mean():.2})")
+                            label = f"{new_name.replace('All', 'Institute')} (n={df[cat].dropna().shape[0]}"
+                            meanscore = -df[f'scores-{cat}'].mean()
+                            if( not pd.isna(meanscore) ):
+                                label = label + f", score={meanscore:.2}"
+                            label = label + f")"
+                            index.append(label)
+
+                pd.DataFrame(plottable_dict, index=index).plot.barh(stacked=True, ax=axes[i])
             else:
-                # multi select values are split by ","
-                values_df = df[cat].apply(lambda x: x.split(',') if not pd.isna(x) else ["No Answer"])
-                values = np.unique(values_df.sum())
-                # we want to sort the values by alpha order
-                values.sort()
-
-                plottable_df = pd.DataFrame({val:np.sum([val in x for x in values_df]) for val in values}, index=[cat_name])
-
-                plottable_df.plot.barh(ax=axes[i])
-                total = df[cat].shape[0]
+                continue
 
             # cut off lables on the legend
             max_legend_label_length = 30
             handles, labels = axes[i].get_legend_handles_labels()
-            shortened_labels = [(label[:max_legend_label_length] + '...' if len(label) > max_legend_label_length else label) + ' ({:} / {:.1%})'.format(plottable_df[label][cat_name], plottable_df[label][cat_name]/total) for label in labels]
-
-            # get the score (scores are negative better, so flip)
-            score = -df[f"scores-{cat}"].mean()
-            if not np.isnan(score):
-                prev_scores[f"{name}-{cat}"] = score
-
-            # add score comparisons
-            score_comps = []
-            split_name = name.split('+')
-
-            # parent depts score comps
-            if split_name[0] in parents:
-                for parent in parents[split_name[0]]:
-                    if len(split_name) == 1 and f"{parent}-{cat}" in prev_scores:
-                        score_comps.append((parent, prev_scores[f"{parent}-{cat}"]))
-                    
-                    # parent gender/ethnicty comp
-                    if len(split_name) > 1 and f"{parent}+{split_name[1]}-{cat}" in prev_scores:
-                        score_comps.append((f"{parent}/{split_name[1]}", prev_scores[f"{parent}+{split_name[1]}-{cat}"]))
-
-            # institute score comp
-            if len(split_name) == 1 and name != "All" and f"All-{cat}" in prev_scores:
-                score_comps.append(("Institute", prev_scores[f"All-{cat}"]))
-            
-            # gender/ethnicty score comp
-            if len(split_name) > 1 and split_name[0] != "All" and f"All+{split_name[1]}-{cat}" in prev_scores:
-                score_comps.append((split_name[1], prev_scores[f"All+{split_name[1]}-{cat}"]))
-
-            if len(score_comps) > 0:
-                score_str = "\n".join([f"{comp[0]} Score: {comp[1]:.2}" for comp in score_comps])
-            else:
-                score_str = ""
+            shortened_labels = [(label[:max_legend_label_length] + '...' if len(label) > max_legend_label_length else label) for label in labels]
 
             axes[i].legend(handles, shortened_labels, bbox_to_anchor=(1.0, -0.25), ncol=2)
-            axes[i].set_title("\n".join(wrap(cat + f" [Responses: {total}]", 50)), wrap=True, ha="left", x=-0)
-
-            # put score on fig, add bkg with bbox=dict(facecolor='red', alpha=0.5)
-            if not np.isnan(score):
-                axes[i].text(1, 1, f"Report Score (-{max_scores[cat]} to {max_scores[cat]}): {score:.2}\n{score_str}", verticalalignment='bottom', horizontalalignment='right', transform=axes[i].transAxes)
+            axes[i].set_title("\n".join(wrap(cat, 50)), wrap=True, ha="left", x=-0, fontsize=10)
 
             i += 1
 
@@ -282,6 +283,77 @@ def plot_bar_charts(df: pd.DataFrame, bar_cats: list[tuple[str, str]], text_cats
     if i % 3 != 0:
         fig.tight_layout()
         pdf.savefig()
+
+    fig, axes = plt.subplots(1, 1, figsize=(8.5, 11))
+    # multi select cats need their own page each
+    for (cat_name, cat) in bar_cats:
+        try:
+            if not "Check all that apply" in cat:
+                continue
+
+            # for "root" dataframe
+            root_values_df = df_groups['All']['All'][cat].apply(lambda x: x.split(',') if not pd.isna(x) else ["No Answer"])
+            root_values = np.unique(root_values_df.sum())
+            # we want to sort the values by alpha order
+            root_values.sort()
+
+            index = []
+
+            plottable_dict = {val: [] for val in root_values}
+            for spec_name, df in df_group.items():
+                # multi select values are split by ","                  #     values_df = df[cat].apply(lambda x: x.split(',') if not pd.isna(x) else ["No Answer"])
+                values_df = df[cat].apply(lambda x: x.split(',') if not pd.isna(x) else ["No Answer"])
+                values = np.unique(values_df.sum())
+                # we want to sort the values by alpha order
+                values.sort()
+
+                for val in plottable_dict.keys():
+                    plottable_dict[val].append(np.sum([val in x for x in values_df]))
+
+                index.append(f"{spec_name.split('+')[1] if '+' in spec_name else spec_name} (n={df[cat].dropna().shape[0]})")
+
+            # parent comparisons
+            for spec_name, _ in df_group.items():
+                for parent in parents[name]:
+                    new_name = parent + ('+' + spec_name.split('+')[1] if len(spec_name.split('+')) > 1 else '')
+                    if new_name in df_groups[parent]:
+                        df = df_groups[parent][new_name]
+                        # same code from previous for loop
+                        values_df = df[cat].apply(lambda x: x.split(',') if not pd.isna(x) else ["No Answer"])
+                        values = np.unique(values_df.sum())
+                        # we want to sort the values by alpha order
+                        values.sort()
+
+                        for val in plottable_dict.keys():
+                            plottable_dict[val].append(np.sum([val in x for x in values_df]))
+                        
+                        index.append(f"{new_name.replace('All', 'Institute')} (n={df[cat].dropna().shape[0]})")
+
+                    
+            pd.DataFrame(plottable_dict, index=index).plot.barh(ax=axes)
+
+            # cut off lables on the legend
+            max_legend_label_length = 30
+            handles, labels = axes.get_legend_handles_labels()
+            shortened_labels = [(label[:max_legend_label_length] + '...' if len(label) > max_legend_label_length else label) for label in labels]
+
+            axes.legend(handles, shortened_labels, bbox_to_anchor=(1.0, -0.25), ncol=2)
+            axes.set_title("\n".join(wrap(cat, 50)), wrap=True, ha="left", x=-0)
+
+            # save old page, create a new page
+            fig.tight_layout()
+            pdf.savefig()
+            plt.close(fig)
+            fig, axes = plt.subplots(1, 1, figsize=(8.5, 11))
+
+        # occurs when no data to plot
+        except TypeError as e:
+            if str(e) == "no numeric data to plot":
+                modified_cat = cat.replace('\r\n', ' ').replace('\n', ' ')
+                logger.log_data(f"The question had no responses (for this report): \"{modified_cat}\"")
+            else:
+                raise e
+    
     
     plt.close(fig)
 
@@ -297,15 +369,50 @@ def plot_text_cats(df: pd.DataFrame, text_cats: list[str], pdf: PdfPages):
             "\n".join(wrap(i, 100)) + f" ({answers_df[i]['count']})" for i in answers_df
         ]
 
-        # 12 answers / page
-        for i in range((len(shortened_answer_list) // 12)):
+        MAX_WORDS_PER_PAGE = 850  # You can adjust this limit
+        current_words = 0
+        current_answers = []
+        page_number = 1
+
+        for ans in shortened_answer_list:
+            word_count = len(ans.split())
+
+            # If adding the current answer exceeds the limit, plot the current answers
+            if current_words + word_count > MAX_WORDS_PER_PAGE:
+                fig, axes = plt.subplots(1, 1, figsize=(8.5, 11))
+                axes.axis('off')
+                wrapped_title = "\n".join(wrap(cat, 30)) + f" (Page {page_number})"
+                axes.set_title(wrapped_title)
+                axes.text(
+                    0,
+                    .95,
+                    "\n\n".join(current_answers),
+                    fontsize=8,
+                    transform=axes.transAxes,
+                    verticalalignment='top'
+                )
+
+                pdf.savefig()
+                plt.close(fig)
+
+                # Reset counters and lists, and increase the page number
+                current_answers = [ans]
+                current_words = word_count
+                page_number += 1
+            else:
+                current_answers.append(ans)
+                current_words += word_count
+
+        # Plot any remaining answers that didn't get their own page
+        if current_answers:
             fig, axes = plt.subplots(1, 1, figsize=(8.5, 11))
             axes.axis('off')
-            axes.set_title(cat + f" (Page {i+1})", wrap=True)
+            wrapped_title = "\n".join(wrap(cat, 30)) + f" (Page {page_number})"
+            axes.set_title(wrapped_title)
             axes.text(
-                0, 
-                .95, 
-                "\n\n".join(shortened_answer_list[(12*i):(12*(i+1))]), 
+                0,
+                .95,
+                "\n\n".join(current_answers),
                 fontsize=8,
                 transform=axes.transAxes,
                 verticalalignment='top'
@@ -315,10 +422,10 @@ def plot_text_cats(df: pd.DataFrame, text_cats: list[str], pdf: PdfPages):
             plt.close(fig)
 
 # generates a pdf report for the dataframe and the appropriate categories
-def generate_pdf(df: pd.DataFrame, bar_cats: list[tuple[str, str]], text_cats: list[str], name: str):
+def generate_pdf(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str, str]], text_cats: list[str], name: str):
     with PdfPages(f"out/{name}.pdf") as pdf:
-        plot_bar_charts(df, bar_cats, text_cats, pdf, name)
-        plot_text_cats(df, text_cats, pdf)
+        plot_bar_charts(df_group, bar_cats, pdf, name)
+        plot_text_cats(df_group[name], text_cats, pdf)
 
 # entrypoint
 if __name__ == '__main__':
@@ -338,19 +445,22 @@ if __name__ == '__main__':
     bar_cats = get_bar_cats(main_df)
     text_cats = get_text_cats(main_df)
 
-    dfs_to_process = get_data_groups(main_df, bar_cats)
+    df_groups_to_process = get_data_groups(main_df, bar_cats)
 
     completed = 0
-    total = len(dfs_to_process.items())
+    total = len(df_groups_to_process.items())
 
     full_start = time.time()
 
-    for name, df in dfs_to_process.items():
+    # global variable needed for parent processing
+    df_groups = df_groups_to_process
+
+    for name, df_group in df_groups_to_process.items():
         sys.stdout.write(f"\rCompleted {completed}/{total} Reports. Working on {name} report.".ljust(100))
         logger.log_data(f"[{name}]")
         start = time.time()
 
-        generate_pdf(df, bar_cats, text_cats, name)
+        generate_pdf(df_group, bar_cats, text_cats, name)
 
         # make sure everything is cleared from last plot
         plt.close('all')
