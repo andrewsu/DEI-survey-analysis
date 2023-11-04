@@ -249,7 +249,13 @@ def plot_bar_charts(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str,
                             label = label + f")"
                             index.append(label)
 
-                pd.DataFrame(plottable_dict, index=index).plot.barh(stacked=True, ax=axes[i])
+                df = pd.DataFrame(plottable_dict, index=index)
+
+                # reverse order so lab of interest shows up on top
+                df = df[::-1]
+
+                df.plot.barh(stacked=True, ax=axes[i])
+
             else:
                 continue
 
