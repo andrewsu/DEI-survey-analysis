@@ -375,7 +375,7 @@ def plot_text_cats(df: pd.DataFrame, text_cats: list[str], pdf: PdfPages):
             "\n".join(wrap(i, 100)) + f" ({answers_df[i]['count']})" for i in answers_df
         ]
 
-        MAX_WORDS_PER_PAGE = 850  # You can adjust this limit
+        MAX_WORDS_PER_PAGE = 525  # You can adjust this limit
         current_words = 0
         current_answers = []
         page_number = 1
