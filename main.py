@@ -265,7 +265,6 @@ def plot_bar_charts(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str,
             shortened_labels = [(label[:max_legend_label_length] + '...' if len(label) > max_legend_label_length else label) for label in labels]
 
             axes[i].legend(handles, shortened_labels, bbox_to_anchor=(1.0, -0.25), ncol=2, fontsize=8)
-#            axes[i].set_title("\n".join(wrap(cat, 80)), wrap=True, ha="left", x=-0, fontsize=8)
             axes[i].set_title(cat, wrap=True, ha="left", x=-0, fontsize=8)
 
             i += 1
