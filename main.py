@@ -24,17 +24,14 @@ max_scores = {}
 # stores all the necessary data frames
 df_groups = {}
 
-# generates a negative or positive score based on an index and length
-# Example with length=5 (odd): 0 -> -2, 1 -> -1, 2 -> 0, 3 -> 1, 4 -> 2
-# Example with length=4 (even): 0 -> -2, 1 -> -1, 2 -> 1, 3 -> 2
+# generates a score between 0 and 100 based on an index and length
+# Example with length=5 (odd): 0 -> 100, 1 -> 75, 2 -> 50, 3 -> 25, 4 -> 0
+# Example with length=4 (even): 0 -> 100, 1 -> 66, 2 -> 33, 3 -> 0
 def get_score(index: int, length: int):
-    if length % 2 == 0:
-        if index < length/2:
-            return index - length/2
-        else:
-            return index - length/2 + 1
-    else:
-        return index - (length-1)/2
+    score = int(100 - (index / (length - 1)) * 100)
+    assert score >= 0
+    assert score <= 100
+    return(score)
 
 # replaces some terms to ensure they are alphabetically ordered for bar chart generation
 # creates "score" columns for values that needs a score
@@ -220,9 +217,9 @@ def plot_bar_charts(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str,
                         
 #                    index.append(f"{spec_name.split('+')[1] if '+' in spec_name else spec_name} (n={df[cat].dropna().shape[0]}, score={-df[f'scores-{cat}'].mean():.2})")
                     label = f"{spec_name.split('+')[1] if '+' in spec_name else spec_name} (n={df[cat].dropna().shape[0]}"
-                    meanscore=-df[f'scores-{cat}'].mean()
+                    meanscore=df[f'scores-{cat}'].mean()
                     if( not pd.isna(meanscore) ):
-                        label = label + f", score={meanscore:.2}"
+                        label = label + f", score={meanscore:.0f}"
                     label = label + f")"
                     index.append(label)
 
@@ -266,6 +263,8 @@ def plot_bar_charts(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str,
 
             axes[i].legend(handles, shortened_labels, bbox_to_anchor=(1.0, -0.25), ncol=2, fontsize=8)
             axes[i].set_title(cat, wrap=True, ha="left", x=-0, fontsize=8)
+            axes[i].tick_params(axis='x', labelsize=8)
+            axes[i].tick_params(axis='y', labelsize=8)
 
             i += 1
 
