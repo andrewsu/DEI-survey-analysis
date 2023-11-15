@@ -94,6 +94,14 @@ def get_dataframe(inputFile: str):
 
     return input_df
 
+# remove certain questions from the data frame based on column headers -- not really useful, so not using it
+def remove_selected_questions( input_df ):
+    old_col_count = input_df.shape[1]
+    input_df = input_df.loc[:,~input_df.columns.str.contains("^Q0:")]
+    new_col_count = input_df.shape[1]
+    print("Removed " + str(int(old_col_count - new_col_count)) + " columns")
+    return(input_df)
+
 # returns a dict of dataframes for which a report should be produced, indexed by the name of that group of data
 def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> dict[str, dict[str, pd.DataFrame]]:
     output_dfs = {}
