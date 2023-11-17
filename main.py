@@ -248,9 +248,9 @@ def plot_bar_charts(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str,
 
 #                            index.append(f"{new_name.replace('All', 'Institute')} (n={df[cat].dropna().shape[0]}, score={-df[f'scores-{cat}'].mean():.2})")
                             label = f"{new_name.replace('All', 'Institute')} (n={df[cat].dropna().shape[0]}"
-                            meanscore = -df[f'scores-{cat}'].mean()
+                            meanscore = df[f'scores-{cat}'].mean()
                             if( not pd.isna(meanscore) ):
-                                label = label + f", score={meanscore:.2}"
+                                label = label + f", score={meanscore:.0f}"
                             label = label + f")"
                             index.append(label)
 
