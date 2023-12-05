@@ -92,6 +92,18 @@ def get_dataframe(inputFile: str):
     # Drop rows without consent
     input_df = input_df[input_df['Q0:Do you consent to taking this survey?'] == 'Yes']
 
+    # change "Latino" and "Hispanic" --> "Latino or Hispanic" per HR request
+    def preprocess_data(input_string):
+        if isinstance(input_string, str):
+            groups_list = input_string.split(',')
+            groups_list = ['Latino or Hispanic' if (x == 'Latino' or x == 'Hispanic') else x for x in groups_list]
+            return ','.join(set(groups_list))
+        else:
+            return input_string
+
+    # Apply the function to the Groups column
+    input_df['Q3:Ethnicity/Race (Check all that apply) - Selected Choice'] = input_df['Q3:Ethnicity/Race (Check all that apply) - Selected Choice'].apply(preprocess_data)
+
     return input_df
 
 # remove certain questions from the data frame based on column headers -- not really useful, so not using it
