@@ -130,8 +130,9 @@ def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> 
 
     # specifies parent relationships
     parent_categories = {
-         'Department/Org Level 1': ['Division/Org Level 2', 'Strategic Unit/Org Level 3'],
-         'Division/Org Level 2': ['Strategic Unit/Org Level 3']
+         'Department/Org Level 1': ['Division/Org Level 2', 'Strategic Unit/Org Level 3', 'Org Level 4'],
+         'Division/Org Level 2': ['Strategic Unit/Org Level 3', 'Org Level 4'],
+         'Strategic Unit/Org Level 3': ['Org Level 4']
     }
 
     for base_category in base_categories:
