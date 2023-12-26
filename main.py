@@ -123,7 +123,13 @@ def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> 
     order_and_score_values(input_df, bar_cats)
 
     # base level categories
-    base_categories = ['All', 'Supervisor for Reporting', 'Strategic Unit/Org Level 3', 'Division/Org Level 2', 'Department/Org Level 1']
+    base_categories = [
+            'All', 
+            'Supervisor for Reporting', 
+            'Org Level 4', 
+            'Strategic Unit/Org Level 3', 
+            'Division/Org Level 2', 
+            'Department/Org Level 1']
 
     # need to handle multiple ehtnicities being selected
     specific_categories = ['Q1:Gender Identity - Selected Choice', 'Q3:Ethnicity/Race (Check all that apply) - Selected Choice']
