@@ -141,6 +141,9 @@ def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> 
          'Strategic Unit/Org Level 3': ['Org Level 4']
     }
 
+    # special DF group for level 4
+    level_4_df_group = {}
+
     for base_category in base_categories:
         # "All" only has one value -> we want to create reports for each specific category though
         if base_category == 'All':
@@ -174,6 +177,9 @@ def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> 
 
             output_dfs[base_entry] = {base_entry: base_entry_df}
 
+            if base_category == 'Org Level 4' or base_category == 'All':             
+                level_4_df_group[base_entry] = base_entry_df
+
             for specific_category in specific_categories:
                 # multi select
                 if specific_category == 'Q3:Ethnicity/Race (Check all that apply) - Selected Choice':
@@ -202,6 +208,10 @@ def get_data_groups(input_df: pd.DataFrame, bar_cats: list[tuple[str, str]]) -> 
                 
                 if generate:
                     output_dfs[base_entry].update(current_dfs)
+
+    # add level 4 to the output
+    output_dfs.update({'All-L4': level_4_df_group})
+    parents['All-L4'] = []
 
     return output_dfs
 
@@ -457,14 +467,14 @@ def plot_text_cats(df: pd.DataFrame, text_cats: list[str], pdf: PdfPages):
 def generate_pdf(df_group: dict[str, pd.DataFrame], bar_cats: list[tuple[str, str]], text_cats: list[str], name: str):
     with PdfPages(f"out/{name}.pdf") as pdf:
         plot_bar_charts(df_group, bar_cats, pdf, name)
-        plot_text_cats(df_group[name], text_cats, pdf)
+        plot_text_cats(df_group[name if name != "All-L4" else "All"], text_cats, pdf)
 
 # entrypoint
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         input_filename = sys.argv[1]
     else:
-        input_filename = "./data/sample_survey_data_20230817.xlsx"
+        input_filename = "./data/sample_survey_data_20231218.xlsx"
 
     if not os.path.exists(input_filename):
         print(f"Error: The file '{input_filename}' does not exist. Specify a valid input file.")
